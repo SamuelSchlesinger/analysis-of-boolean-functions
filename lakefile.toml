@@ -1,0 +1,11 @@
+name = "BooleanAnalysis"
+version = "0.1.0"
+defaultTargets = ["BooleanAnalysis"]
+
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "master"
+
+[[lean_lib]]
+name = "BooleanAnalysis"
