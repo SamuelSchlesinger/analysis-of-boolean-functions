@@ -21,6 +21,17 @@ convention of representing the cube as `{-1, 1}^n` via the map `b ↦ (-1)^b`.
 * `BooleanAnalysis.fourierWeight` — the Fourier weight `f̂(S)²`
 * `BooleanAnalysis.fourierWeightAtDegree` — `W^k[f]`, weight at degree `k`
 * `BooleanAnalysis.convolution` — convolution `f * g` on `𝔽₂ⁿ`
+
+## Notation
+
+Within the `BooleanAnalysis` namespace, we provide notation that mirrors
+the book's conventions:
+
+* `𝔼[f]` — uniform expectation over the Hamming cube
+* `⟪f, g⟫` — inner product `𝔼[f·g]`
+* `χ S` — parity function on set `S`
+* `𝓕 f S` — Fourier coefficient of `f` on `S`
+* `𝐖 k f` — Fourier weight of `f` at degree `k`
 -/
 
 import Mathlib
@@ -44,46 +55,58 @@ def chi : ZMod 2 → ℝ :=
 noncomputable def parityFun (S : Finset (Fin n)) : Cube n → ℝ :=
   fun x => ∏ i ∈ S, chi (x i)
 
+scoped prefix:max "χ" => parityFun
+
 /-- The uniform expectation `𝔼_{x ~ 𝔽₂ⁿ}[f(x)] = 2⁻ⁿ · ∑_x f(x)`. -/
 noncomputable def expect (f : Cube n → ℝ) : ℝ :=
   (1 : ℝ) / 2 ^ n * ∑ x : Cube n, f x
 
-/-- The inner product on functions `𝔽₂ⁿ → ℝ`, defined by
-    `⟨f, g⟩ = 𝔼_x[f(x)·g(x)] = 2⁻ⁿ · ∑_x f(x)·g(x)`. (Definition 1.3) -/
-noncomputable def innerProd (f g : Cube n → ℝ) : ℝ :=
-  expect (fun x => f x * g x)
+scoped notation "𝔼[" f "]" => expect f
 
-/-- The Fourier coefficient `f̂(S) = ⟨f, χ_S⟩ = 𝔼_x[f(x)·χ_S(x)]`.
+/-- The inner product on functions `𝔽₂ⁿ → ℝ`, defined by
+    `⟪f, g⟫ = 𝔼_x[f(x)·g(x)] = 2⁻ⁿ · ∑_x f(x)·g(x)`. (Definition 1.3) -/
+noncomputable def innerProd (f g : Cube n → ℝ) : ℝ :=
+  𝔼[fun x => f x * g x]
+
+scoped notation "⟪" f ", " g "⟫" => innerProd f g
+
+/-- The Fourier coefficient `f̂(S) = ⟪f, χ_S⟫ = 𝔼_x[f(x)·χ_S(x)]`.
     (Proposition 1.8) -/
 noncomputable def fourierCoeff (f : Cube n → ℝ) (S : Finset (Fin n)) : ℝ :=
-  innerProd f (parityFun S)
+  ⟪f, χ S⟫
+
+scoped notation "𝓕" => fourierCoeff
 
 /-- The Fourier weight of `f` on set `S`, defined as `f̂(S)²`.
     (Definition 1.17) -/
 noncomputable def fourierWeight (f : Cube n → ℝ) (S : Finset (Fin n)) : ℝ :=
-  fourierCoeff f S ^ 2
+  𝓕 f S ^ 2
 
 /-- The Fourier weight of `f` at degree `k`, defined as
-    `W^k[f] = ∑_{|S|=k} f̂(S)²`. (Definition 1.19) -/
+    `𝐖 k f = ∑_{|S|=k} f̂(S)²`. (Definition 1.19) -/
 noncomputable def fourierWeightAtDegree (f : Cube n → ℝ) (k : ℕ) : ℝ :=
   ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin n) => S.card = k),
     fourierWeight f S
 
+scoped notation "𝐖" => fourierWeightAtDegree
+
 /-- The relative Hamming distance between Boolean-valued functions `f` and `g`,
     `dist(f, g) = Pr_x[f(x) ≠ g(x)]`. (Definition 1.10) -/
 noncomputable def hammingDist (f g : Cube n → ℝ) : ℝ :=
-  expect (fun x => if f x = g x then 0 else 1)
+  𝔼[fun x => if f x = g x then 0 else 1]
 
 /-- The convolution of `f, g : 𝔽₂ⁿ → ℝ`, defined by
-    `(f * g)(x) = 𝔼_y[f(y)·g(x + y)]`. (Definition 1.24) -/
+    `(f ⊛ g)(x) = 𝔼_y[f(y)·g(x + y)]`. (Definition 1.24) -/
 noncomputable def convolution (f g : Cube n → ℝ) : Cube n → ℝ :=
-  fun x => expect (fun y => f y * g (x + y))
+  fun x => 𝔼[fun y => f y * g (x + y)]
+
+scoped infixl:70 " ⊛ " => convolution
 
 /-- A probability density on `𝔽₂ⁿ` is a nonnegative function with
     `𝔼[φ] = 1`. (Definition 1.20) -/
 structure IsDensity (φ : Cube n → ℝ) : Prop where
   nonneg : ∀ x, 0 ≤ φ x
-  expect_one : expect φ = 1
+  expect_one : 𝔼[φ] = 1
 
 /-- A function `f : 𝔽₂ⁿ → ℝ` is Boolean-valued if its range is `{-1, 1}`.
     In the ±1 encoding, this means `f(x)² = 1` for all `x`. -/

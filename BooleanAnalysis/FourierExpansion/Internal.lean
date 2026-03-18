@@ -57,26 +57,26 @@ theorem chi_ne_zero (b : ZMod 2) : chi b ≠ 0 := by
 
 /-- The parity function on the empty set is the constant function 1. -/
 @[simp]
-theorem parityFun_empty : parityFun (∅ : Finset (Fin n)) = fun _ => 1 := by
+theorem parityFun_empty : (χ (∅ : Finset (Fin n))) = fun _ => 1 := by
   ext x; simp [parityFun]
 
-/-- Parity functions are multiplicative: `χ_S(x + y) = χ_S(x) · χ_S(y)`.
+/-- Parity functions are multiplicative: `χ S (x + y) = χ S x · χ S y`.
     (Equation 1.5 in the book) -/
 theorem parityFun_add (S : Finset (Fin n)) (x y : Cube n) :
-    parityFun S (x + y) = parityFun S x * parityFun S y := by
+    (χ S) (x + y) = (χ S) x * (χ S) y := by
   simp only [parityFun]
   rw [← Finset.prod_mul_distrib]
   congr 1; ext i; exact chi_add (x i) (y i)
 
-/-- `χ_S(x)² = 1` for all `S` and `x`. -/
+/-- `(χ S x)² = 1` for all `S` and `x`. -/
 theorem parityFun_sq (S : Finset (Fin n)) (x : Cube n) :
-    parityFun S x ^ 2 = 1 := by
+    (χ S) x ^ 2 = 1 := by
   simp only [parityFun, ← Finset.prod_pow]
   simp [chi_sq]
 
-/-- `χ_S(0) = 1`. -/
+/-- `χ S 0 = 1`. -/
 @[simp]
-theorem parityFun_zero (S : Finset (Fin n)) : parityFun S 0 = 1 := by
+theorem parityFun_zero (S : Finset (Fin n)) : (χ S) 0 = 1 := by
   simp [parityFun, chi_zero]
 
 end BooleanAnalysis.Internal
