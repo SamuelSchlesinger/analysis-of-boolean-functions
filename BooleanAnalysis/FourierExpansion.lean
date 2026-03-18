@@ -26,8 +26,8 @@ variable {n : ℕ}
 /-- **Theorem 1.1** (Fourier expansion): Every function `f : 𝔽₂ⁿ → ℝ` can be
     uniquely expressed as `f(x) = ∑_S 𝓕 f S · (χ S) x`. -/
 theorem fourier_expansion (f : Cube n → ℝ) (x : Cube n) :
-    f x = ∑ S : Finset (Fin n), 𝓕 f S * (χ S) x := by
-  sorry
+    f x = ∑ S : Finset (Fin n), 𝓕 f S * (χ S) x :=
+  BooleanAnalysis.Internal.fourier_expansion_proof f x
 
 /-! ### §1.3 Orthonormality of parity functions -/
 
@@ -38,19 +38,42 @@ theorem parityFun_add' (S : Finset (Fin n)) (x y : Cube n) :
 
 /-- **Fact 1.6**: `(χ S) x · (χ T) x = (χ (S △ T)) x`. -/
 theorem parityFun_mul (S T : Finset (Fin n)) (x : Cube n) :
-    (χ S) x * (χ T) x = (χ (symmDiff S T)) x := by
-  sorry
+    (χ S) x * (χ T) x = (χ (symmDiff S T)) x :=
+  BooleanAnalysis.Internal.parityFun_mul S T x
 
 /-- **Fact 1.7**: `𝔼[χ S] = 1` if `S = ∅` and `𝔼[χ S] = 0` if `S ≠ ∅`. -/
 theorem expect_parityFun (S : Finset (Fin n)) :
     𝔼[χ S] = if S = ∅ then 1 else 0 := by
-  sorry
+  split_ifs with h
+  · subst h; simp [expect, parityFun_empty, Fintype.card_fin, ZMod.card]
+  · simp only [expect]
+    obtain ⟨j, hj⟩ := Finset.nonempty_of_ne_empty h
+    let ej : Cube n := Pi.single j 1
+    have hej : (χ S) ej = -1 := by
+      simp only [parityFun]
+      have hprod : ∀ i ∈ S, chi (ej i) = if i = j then -1 else 1 := by
+        intro i _; simp only [ej, Pi.single_apply]; split_ifs <;> simp [chi_zero, chi_one]
+      rw [Finset.prod_congr rfl hprod]
+      simp [hj]
+    suffices ∑ x : Cube n, (χ S) x = 0 by rw [this, mul_zero]
+    have hself : ∑ x : Cube n, (χ S) x = -(∑ x : Cube n, (χ S) x) := by
+      conv_lhs =>
+        rw [Fintype.sum_equiv (Equiv.addRight ej) _ (fun y => -(χ S) y) (fun x => by
+          show (χ S) x = -(χ S) (x + ej)
+          rw [parityFun_add, hej, mul_neg_one, neg_neg])]
+      rw [Finset.sum_neg_distrib]
+    linarith
 
 /-- **Theorem 1.5**: The parity functions are orthonormal:
     `⟪χ S, χ T⟫ = 1` if `S = T` and `0` otherwise. -/
 theorem parityFun_orthonormal (S T : Finset (Fin n)) :
     ⟪χ S, χ T⟫ = if S = T then 1 else 0 := by
-  sorry
+  simp only [innerProd]
+  have : (fun x => (χ S) x * (χ T) x) = (χ (symmDiff S T)) := by
+    ext x; exact parityFun_mul S T x
+  rw [this, expect_parityFun]
+  have : symmDiff S T = ∅ ↔ S = T := symmDiff_eq_bot
+  simp [this]
 
 /-! ### §1.4 Basic Fourier formulas -/
 
@@ -61,67 +84,95 @@ theorem fourierCoeff_eq_innerProd (f : Cube n → ℝ) (S : Finset (Fin n)) :
 /-- **Parseval's Theorem**: `⟪f, f⟫ = ∑ S, (𝓕 f S) ^ 2`. -/
 theorem parseval (f : Cube n → ℝ) :
     ⟪f, f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
-  sorry
+  rw [BooleanAnalysis.Internal.plancherel_proof]; congr 1; ext S; rw [sq]
 
 /-- **Parseval's Theorem** (Boolean case): For Boolean-valued `f`,
     `∑ S, (𝓕 f S) ^ 2 = 1`. -/
 theorem parseval_boolean (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 := by
-  sorry
+  rw [← parseval]
+  simp only [innerProd, expect]
+  have : ∀ x : Cube n, f x * f x = 1 := by
+    intro x; rcases hf x with h | h <;> simp [h]
+  simp_rw [this, Finset.sum_const, nsmul_eq_mul, mul_one, Finset.card_univ]
+  simp [ZMod.card]
 
 /-- **Plancherel's Theorem**: `⟪f, g⟫ = ∑ S, (𝓕 f S) · (𝓕 g S)`. -/
 theorem plancherel (f g : Cube n → ℝ) :
-    ⟪f, g⟫ = ∑ S : Finset (Fin n), (𝓕 f S) * (𝓕 g S) := by
-  sorry
+    ⟪f, g⟫ = ∑ S : Finset (Fin n), (𝓕 f S) * (𝓕 g S) :=
+  BooleanAnalysis.Internal.plancherel_proof f g
 
 /-- **Proposition 1.9a**: For Boolean-valued `f, g`,
     `⟪f, g⟫ = Pr[f(x) = g(x)] - Pr[f(x) ≠ g(x)]`. -/
 theorem innerProd_eq_agree_sub_disagree (f g : Cube n → ℝ)
     (hf : IsBooleanValued f) (hg : IsBooleanValued g) :
     ⟪f, g⟫ = (1 - hammingDist f g) - hammingDist f g := by
-  sorry
+  have := Internal.innerProd_add_two_hammingDist f g hf hg; linarith
 
 /-- **Proposition 1.9b**: For Boolean-valued `f, g`,
     `⟪f, g⟫ = 1 - 2·dist(f, g)`. -/
 theorem innerProd_eq_one_sub_two_dist (f g : Cube n → ℝ)
     (hf : IsBooleanValued f) (hg : IsBooleanValued g) :
     ⟪f, g⟫ = 1 - 2 * hammingDist f g := by
-  sorry
+  rw [innerProd_eq_agree_sub_disagree f g hf hg]; ring
 
 /-- **Fact 1.12**: The mean of `f` equals its empty-set Fourier coefficient:
     `𝔼[f] = 𝓕 f ∅`. -/
 theorem expect_eq_fourierCoeff_empty (f : Cube n → ℝ) :
     𝔼[f] = 𝓕 f ∅ := by
-  sorry
+  simp [fourierCoeff, innerProd, parityFun_empty]
 
 /-- **Proposition 1.13**: The variance of `f` in terms of Fourier coefficients:
     `Var[f] = ∑_{S ≠ ∅} (𝓕 f S)²`. -/
 theorem variance_eq_sum_fourierCoeff_sq (f : Cube n → ℝ) :
     Var[f] = ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin n) => S ≠ ∅),
       (𝓕 f S) ^ 2 := by
-  sorry
+  have hef : 𝔼[fun x => f x ^ 2] = ⟪f, f⟫ := by simp [innerProd, expect, sq]
+  simp only [variance]
+  rw [hef, parseval, expect_eq_fourierCoeff_empty]
+  have := Finset.sum_erase_eq_sub (f := fun S => (fourierCoeff f S) ^ 2)
+    (Finset.mem_univ (∅ : Finset (Fin n)))
+  rw [← this]
+  congr 1
+  ext S; simp [Finset.mem_erase, Finset.mem_filter, and_comm]
 
 /-- **Fact 1.14**: For Boolean-valued `f`,
     `Var[f] = 1 - 𝔼[f]² = 4·Pr[f=1]·Pr[f=-1] ∈ [0, 1]`. -/
 theorem variance_boolean (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     Var[f] = 1 - (𝔼[f]) ^ 2 := by
-  sorry
+  unfold variance
+  have h1 : 𝔼[fun x => f x ^ 2] = 1 := by
+    simp only [expect]
+    have : ∀ x : Cube n, f x ^ 2 = 1 := by
+      intro x; rcases hf x with h | h <;> simp [h]
+    rw [Finset.sum_congr rfl (fun x _ => this x)]
+    simp [Fintype.card_fin, ZMod.card]
+  linarith
 
 /-- **Fact 1.14** (probability form): For Boolean-valued `f`,
     `Var[f] = 4 · Pr[f = 1] · Pr[f = -1]`. -/
 theorem variance_boolean_prob (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     Var[f] = 4 * Pr[fun x => f x = 1] * Pr[fun x => f x = -1] := by
-  sorry
+  rw [variance_boolean f hf, expect_boolean_eq_prob_diff f hf]
+  have := prob_boolean_sum_one f hf
+  nlinarith [sq_nonneg (Pr[fun x => f x = 1] - Pr[fun x => f x = -1])]
 
 /-- **Fact 1.14** (lower bound): For Boolean-valued `f`, `0 ≤ Var[f]`. -/
 theorem variance_boolean_nonneg (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     0 ≤ Var[f] := by
-  sorry
+  rw [variance_boolean f hf]
+  have hexp := expect_boolean_eq_prob_diff f hf
+  have hsum := prob_boolean_sum_one f hf
+  have hp1 : 0 ≤ Pr[fun x => f x = 1] := by
+    simp only [prob, expect, indicator]; positivity
+  have hp2 : 0 ≤ Pr[fun x => f x = -1] := by
+    simp only [prob, expect, indicator]; positivity
+  nlinarith [sq_nonneg (𝔼[f])]
 
 /-- **Fact 1.14** (upper bound): For Boolean-valued `f`, `Var[f] ≤ 1`. -/
 theorem variance_boolean_le_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     Var[f] ≤ 1 := by
-  sorry
+  rw [variance_boolean f hf]; nlinarith [sq_abs (𝔼[f])]
 
 /-- **Proposition 1.15**: For Boolean-valued `f`, `2ε ≤ Var[f] ≤ 4ε`
     where `ε = min(dist(f, 1), dist(f, -1))`.
@@ -130,14 +181,25 @@ theorem variance_boolean_le_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
 theorem variance_dist_bounds (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     let ε := min (hammingDist f (fun _ => 1)) (hammingDist f (fun _ => -1))
     2 * ε ≤ Var[f] ∧ Var[f] ≤ 4 * ε := by
-  sorry
+  rw [Internal.hammingDist_const_one f hf, Internal.hammingDist_const_neg_one f hf]
+  rw [variance_boolean_prob f hf]
+  exact Internal.variance_dist_bounds_arith
+    (Pr[fun x => f x = 1]) (Pr[fun x => f x = -1])
+    (Internal.prob_nonneg _) (Internal.prob_nonneg _)
+    (Internal.prob_boolean_sum_one f hf)
 
 /-- **Proposition 1.16**: The covariance in terms of Fourier coefficients:
     `Cov[f, g] = ∑_{S ≠ ∅} (𝓕 f S) · (𝓕 g S)`. -/
 theorem covariance_eq_sum_fourierCoeff (f g : Cube n → ℝ) :
     Cov[f, g] = ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin n) => S ≠ ∅),
       (𝓕 f S) * (𝓕 g S) := by
-  sorry
+  rw [covariance, ← show ⟪f, g⟫ = 𝔼[fun x => f x * g x] from rfl]
+  rw [plancherel, expect_eq_fourierCoeff_empty, expect_eq_fourierCoeff_empty]
+  have := Finset.sum_erase_eq_sub (f := fun S => fourierCoeff f S * fourierCoeff g S)
+    (Finset.mem_univ (∅ : Finset (Fin n)))
+  rw [← this]
+  congr 1
+  ext S; simp [Finset.mem_erase, Finset.mem_filter, and_comm]
 
 /-! ### §1.5 Probability densities and convolution -/
 
@@ -153,14 +215,14 @@ theorem expect_density_eq_innerProd (φ g : Cube n → ℝ) (_hφ : IsDensity φ
     `φ_{0}(y) = ∑_S (χ S) y`. -/
 theorem setDensity_singleton_zero :
     ∀ y : Cube n, setDensity ({0} : Finset (Cube n)) y =
-      ∑ S : Finset (Fin n), (χ S) y := by
-  sorry
+      ∑ S : Finset (Fin n), (χ S) y :=
+  Internal.setDensity_singleton_zero_proof
 
 /-- **Fact 1.23** (Fourier coefficient form): Every Fourier coefficient of
     `φ_{0}` is `1`, i.e., `𝓕 φ_{0} S = 1` for all `S`. -/
 theorem fourierCoeff_setDensity_singleton_zero (S : Finset (Fin n)) :
-    𝓕 (setDensity ({0} : Finset (Cube n))) S = 1 := by
-  sorry
+    𝓕 (setDensity ({0} : Finset (Cube n))) S = 1 :=
+  Internal.fourierCoeff_setDensity_singleton_zero_proof S
 
 /-- **Proposition 1.25**: If `φ` is a density and `g : 𝔽₂ⁿ → ℝ`, then
     `(φ ⊛ g)(x) = 𝔼_{y ~ φ}[g(x + y)]`.
@@ -174,29 +236,29 @@ theorem convolution_density (φ g : Cube n → ℝ) (_hφ : IsDensity φ) (x : C
     is also a density. -/
 theorem convolution_density_isDensity (φ ψ : Cube n → ℝ)
     (hφ : IsDensity φ) (hψ : IsDensity ψ) :
-    IsDensity (φ ⊛ ψ) := by
-  sorry
+    IsDensity (φ ⊛ ψ) :=
+  Internal.convolution_density_isDensity_proof φ ψ hφ hψ
 
 /-- **Theorem 1.27** (Convolution theorem):
     `𝓕 (f ⊛ g) S = (𝓕 f S) · (𝓕 g S)`. -/
 theorem fourierCoeff_convolution (f g : Cube n → ℝ) (S : Finset (Fin n)) :
-    𝓕 (f ⊛ g) S = (𝓕 f S) * (𝓕 g S) := by
-  sorry
+    𝓕 (f ⊛ g) S = (𝓕 f S) * (𝓕 g S) :=
+  Internal.fourierCoeff_convolution_proof f g S
 
 /-! ### §1.6 The BLR test -/
 
 /-- **Equation 1.10**: The BLR acceptance probability in terms of Fourier coefficients:
     `Pr_{x,y}[f(x)·f(y) = f(x+y)] = 1/2 + 1/2 · ∑_S (𝓕 f S)³`. -/
 theorem blrAcceptProb_eq (f : Cube n → ℝ) (hf : IsBooleanValued f) :
-    blrAcceptProb f = 1 / 2 + 1 / 2 * ∑ S : Finset (Fin n), (𝓕 f S) ^ 3 := by
-  sorry
+    blrAcceptProb f = 1 / 2 + 1 / 2 * ∑ S : Finset (Fin n), (𝓕 f S) ^ 3 :=
+  Internal.blrAcceptProb_eq_proof f hf
 
 /-- **Theorem 1.30** (BLR soundness): If the BLR test accepts `f` with
     probability `1 - ε`, then `f` is `ε`-close to being linear. -/
 theorem blr_soundness (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : ℝ)
     (hε : blrAcceptProb f ≥ 1 - ε) :
-    IsCloseToProperty ε f IsLinear := by
-  sorry
+    IsCloseToProperty ε f IsLinear :=
+  Internal.blr_soundness_proof f hf ε hε
 
 /-- **Proposition 1.31** (Local correctability): If `f` is `ε`-close to the
     linear function `χ S`, then for every `x`, the algorithm
@@ -204,7 +266,7 @@ theorem blr_soundness (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : ℝ)
     with probability at least `1 - 2ε`. -/
 theorem local_correctability (f : Cube n → ℝ) (hf : IsBooleanValued f)
     (S : Finset (Fin n)) (hclose : IsClose ε f (χ S)) (x : Cube n) :
-    Pr[fun y => f y * f (x + y) = (χ S) x] ≥ 1 - 2 * ε := by
-  sorry
+    Pr[fun y => f y * f (x + y) = (χ S) x] ≥ 1 - 2 * ε :=
+  Internal.local_correctability_proof f hf S ε hclose x
 
 end BooleanAnalysis
