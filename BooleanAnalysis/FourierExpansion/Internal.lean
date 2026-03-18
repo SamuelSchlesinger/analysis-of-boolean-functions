@@ -79,4 +79,16 @@ theorem parityFun_sq (S : Finset (Fin n)) (x : Cube n) :
 theorem parityFun_zero (S : Finset (Fin n)) : (χ S) 0 = 1 := by
   simp [parityFun, chi_zero]
 
+/-- **Definition 1.11** (explicit form): For Boolean-valued `f`,
+    `𝔼[f] = Pr[f = 1] - Pr[f = -1]`. -/
+theorem expect_boolean_eq_prob_diff (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    𝔼[f] = Pr[fun x => f x = 1] - Pr[fun x => f x = -1] := by
+  sorry
+
+/-- For Boolean-valued `f`, `Pr[f = 1] + Pr[f = -1] = 1`.
+    (Implicit in Definition 1.11: every input maps to exactly one of `1` or `-1`.) -/
+theorem prob_boolean_sum_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    Pr[fun x => f x = 1] + Pr[fun x => f x = -1] = 1 := by
+  sorry
+
 end BooleanAnalysis.Internal

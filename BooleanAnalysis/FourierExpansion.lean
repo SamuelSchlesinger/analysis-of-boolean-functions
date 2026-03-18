@@ -107,6 +107,22 @@ theorem variance_boolean (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     Var[f] = 1 - (𝔼[f]) ^ 2 := by
   sorry
 
+/-- **Fact 1.14** (probability form): For Boolean-valued `f`,
+    `Var[f] = 4 · Pr[f = 1] · Pr[f = -1]`. -/
+theorem variance_boolean_prob (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    Var[f] = 4 * Pr[fun x => f x = 1] * Pr[fun x => f x = -1] := by
+  sorry
+
+/-- **Fact 1.14** (lower bound): For Boolean-valued `f`, `0 ≤ Var[f]`. -/
+theorem variance_boolean_nonneg (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    0 ≤ Var[f] := by
+  sorry
+
+/-- **Fact 1.14** (upper bound): For Boolean-valued `f`, `Var[f] ≤ 1`. -/
+theorem variance_boolean_le_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    Var[f] ≤ 1 := by
+  sorry
+
 /-- **Proposition 1.15**: For Boolean-valued `f`, `2ε ≤ Var[f] ≤ 4ε`
     where `ε = min(dist(f, 1), dist(f, -1))`.
 
@@ -126,10 +142,12 @@ theorem covariance_eq_sum_fourierCoeff (f g : Cube n → ℝ) :
 /-! ### §1.5 Probability densities and convolution -/
 
 /-- **Fact 1.21**: If `φ` is a density and `g : 𝔽₂ⁿ → ℝ`, then
-    `𝔼_{y ~ φ}[g(y)] = ⟪φ, g⟫`. -/
-theorem expect_density_eq_innerProd (φ g : Cube n → ℝ) (hφ : IsDensity φ) :
-    𝔼[fun x => φ x * g x] = ⟪φ, g⟫ := by
-  sorry
+    `𝔼_{y ~ φ}[g(y)] = ⟪φ, g⟫`.
+
+    In our formalization this is definitional: `innerProd f g` is defined as
+    `𝔼[fun x => f x * g x]`. -/
+theorem expect_density_eq_innerProd (φ g : Cube n → ℝ) (_hφ : IsDensity φ) :
+    𝔼[fun x => φ x * g x] = ⟪φ, g⟫ := rfl
 
 /-- **Fact 1.23**: Every Fourier coefficient of `φ_{0}` is 1; i.e.,
     `φ_{0}(y) = ∑_S (χ S) y`. -/
@@ -138,11 +156,19 @@ theorem setDensity_singleton_zero :
       ∑ S : Finset (Fin n), (χ S) y := by
   sorry
 
-/-- **Proposition 1.25**: If `φ` is a density and `g : 𝔽₂ⁿ → ℝ`, then
-    `(φ ⊛ g)(x) = 𝔼_{y ~ φ}[g(x + y)]`. -/
-theorem convolution_density (φ g : Cube n → ℝ) (hφ : IsDensity φ) (x : Cube n) :
-    (φ ⊛ g) x = 𝔼[fun y => φ y * g (x + y)] := by
+/-- **Fact 1.23** (Fourier coefficient form): Every Fourier coefficient of
+    `φ_{0}` is `1`, i.e., `𝓕 φ_{0} S = 1` for all `S`. -/
+theorem fourierCoeff_setDensity_singleton_zero (S : Finset (Fin n)) :
+    𝓕 (setDensity ({0} : Finset (Cube n))) S = 1 := by
   sorry
+
+/-- **Proposition 1.25**: If `φ` is a density and `g : 𝔽₂ⁿ → ℝ`, then
+    `(φ ⊛ g)(x) = 𝔼_{y ~ φ}[g(x + y)]`.
+
+    In our formalization this is definitional: `convolution f g` is defined as
+    `fun x => 𝔼[fun y => f y * g (x + y)]`. -/
+theorem convolution_density (φ g : Cube n → ℝ) (_hφ : IsDensity φ) (x : Cube n) :
+    (φ ⊛ g) x = 𝔼[fun y => φ y * g (x + y)] := rfl
 
 /-- **Proposition 1.26**: If `φ` and `ψ` are both densities, then `φ ⊛ ψ`
     is also a density. -/
