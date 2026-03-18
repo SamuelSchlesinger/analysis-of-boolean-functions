@@ -217,14 +217,14 @@ def IsLinear (f : Cube n → ℝ) : Prop :=
 
 /-- Two Boolean-valued functions are `ε`-close if `dist(f, g) ≤ ε`.
     (Definition 1.29) -/
-def IsClose (ε : ℝ) (f g : Cube n → ℝ) : Prop :=
+def IsClose (f g : Cube n → ℝ) (ε : ℝ) : Prop :=
   hammingDist f g ≤ ε
 
 /-- A Boolean-valued function is `ε`-close to a property `P` if there
     exists `g` satisfying `P` with `dist(f, g) ≤ ε`. (Definition 1.29) -/
-def IsCloseToProperty (ε : ℝ) (f : Cube n → ℝ)
-    (P : (Cube n → ℝ) → Prop) : Prop :=
-  ∃ g, P g ∧ IsClose ε f g
+def IsCloseToProperty (f : Cube n → ℝ)
+    (P : (Cube n → ℝ) → Prop) (ε : ℝ) : Prop :=
+  ∃ g, P g ∧ IsClose f g ε
 
 /-- The BLR acceptance probability: `Pr_{x,y}[f(x)·f(y) = f(x+y)]`,
     which equals `1/2 + 1/2 · ∑_S 𝓕 f S ^ 3`. -/

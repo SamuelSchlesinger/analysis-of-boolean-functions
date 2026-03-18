@@ -423,7 +423,7 @@ theorem parityFun_mul_cancel (S : Finset (Fin n)) (x y : Cube n) :
 
 /-- Local correctability of the Fourier decoding algorithm. -/
 theorem local_correctability_proof (f : Cube n → ℝ) (_hf : IsBooleanValued f)
-    (S : Finset (Fin n)) (ε : ℝ) (hclose : IsClose ε f (χ S)) (x : Cube n) :
+    (S : Finset (Fin n)) (ε : ℝ) (hclose : IsClose f (χ S) ε) (x : Cube n) :
     Pr[fun y => f y * f (x + y) = (χ S) x] ≥ 1 - 2 * ε := by
   have hdist : hammingDist f (χ S) ≤ ε := hclose
   have hcompl : Pr[fun y => f y * f (x + y) ≠ (χ S) x] ≤ 2 * ε := by
@@ -549,7 +549,7 @@ theorem blr_completeness_proof (f : Cube n → ℝ) (hf : IsLinear f) :
     then `f` is `ε`-close to a linear function. -/
 theorem blr_soundness_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : ℝ)
     (hε : blrAcceptProb f ≥ 1 - ε) :
-    IsCloseToProperty ε f IsLinear := by
+    IsCloseToProperty f IsLinear ε := by
   have hblr := blrAcceptProb_eq_proof f hf
   have hsum3 : ∑ S : Finset (Fin n), (𝓕 f S) ^ 3 ≥ 1 - 2 * ε := by linarith
   have hpars := parseval_boolean_proof f hf
