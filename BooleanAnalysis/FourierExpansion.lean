@@ -29,6 +29,14 @@ theorem fourier_expansion (f : Cube n → ℝ) (x : Cube n) :
     f x = ∑ S : Finset (Fin n), 𝓕 f S * (χ S) x :=
   BooleanAnalysis.Internal.fourier_expansion_proof f x
 
+/-- **Theorem 1.1** (Fourier uniqueness): If `f(x) = ∑_S c_S · χ_S(x)` for all `x`,
+    then `c_S = 𝓕 f S` for all `S`. Together with `fourier_expansion`, this establishes
+    the parity functions as an orthonormal basis for the space of functions `𝔽₂ⁿ → ℝ`. -/
+theorem fourier_uniqueness (f : Cube n → ℝ) (c : Finset (Fin n) → ℝ)
+    (h : ∀ x, f x = ∑ S : Finset (Fin n), c S * (χ S) x) :
+    ∀ S, c S = 𝓕 f S :=
+  Internal.fourier_uniqueness_proof f c h
+
 /-! ### §1.3 Orthonormality of parity functions -/
 
 /-- **Equation 1.5**: `(χ S)(x + y) = (χ S) x · (χ S) y`. -/
@@ -43,26 +51,8 @@ theorem parityFun_mul (S T : Finset (Fin n)) (x : Cube n) :
 
 /-- **Fact 1.7**: `𝔼[χ S] = 1` if `S = ∅` and `𝔼[χ S] = 0` if `S ≠ ∅`. -/
 theorem expect_parityFun (S : Finset (Fin n)) :
-    𝔼[χ S] = if S = ∅ then 1 else 0 := by
-  split_ifs with h
-  · subst h; simp [expect, parityFun_empty, Fintype.card_fin, ZMod.card]
-  · simp only [expect]
-    obtain ⟨j, hj⟩ := Finset.nonempty_of_ne_empty h
-    let ej : Cube n := Pi.single j 1
-    have hej : (χ S) ej = -1 := by
-      simp only [parityFun]
-      have hprod : ∀ i ∈ S, chi (ej i) = if i = j then -1 else 1 := by
-        intro i _; simp only [ej, Pi.single_apply]; split_ifs <;> simp [chi_zero, chi_one]
-      rw [Finset.prod_congr rfl hprod]
-      simp [hj]
-    suffices ∑ x : Cube n, (χ S) x = 0 by rw [this, mul_zero]
-    have hself : ∑ x : Cube n, (χ S) x = -(∑ x : Cube n, (χ S) x) := by
-      conv_lhs =>
-        rw [Fintype.sum_equiv (Equiv.addRight ej) _ (fun y => -(χ S) y) (fun x => by
-          show (χ S) x = -(χ S) (x + ej)
-          rw [parityFun_add, hej, mul_neg_one, neg_neg])]
-      rw [Finset.sum_neg_distrib]
-    linarith
+    𝔼[χ S] = if S = ∅ then 1 else 0 :=
+  Internal.expect_parityFun_proof S
 
 /-- **Theorem 1.5**: The parity functions are orthonormal:
     `⟪χ S, χ T⟫ = 1` if `S = T` and `0` otherwise. -/
@@ -89,13 +79,21 @@ theorem parseval (f : Cube n → ℝ) :
 /-- **Parseval's Theorem** (Boolean case): For Boolean-valued `f`,
     `∑ S, (𝓕 f S) ^ 2 = 1`. -/
 theorem parseval_boolean (f : Cube n → ℝ) (hf : IsBooleanValued f) :
-    ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 := by
-  rw [← parseval]
-  simp only [innerProd, expect]
-  have : ∀ x : Cube n, f x * f x = 1 := by
-    intro x; rcases hf x with h | h <;> simp [h]
-  simp_rw [this, Finset.sum_const, nsmul_eq_mul, mul_one, Finset.card_univ]
-  simp [ZMod.card]
+    ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 :=
+  Internal.parseval_boolean_proof f hf
+
+/-- The inner product `⟪f, f⟫` is nonnegative. -/
+theorem innerProd_self_nonneg (f : Cube n → ℝ) : 0 ≤ ⟪f, f⟫ :=
+  Internal.innerProd_self_nonneg f
+
+/-- `‖f‖₂² = ⟪f, f⟫`. -/
+theorem l2Norm_sq (f : Cube n → ℝ) : ‖f‖₂ ^ 2 = ⟪f, f⟫ :=
+  Internal.l2Norm_sq_eq_innerProd f
+
+/-- `‖f‖₂² = ∑_S (𝓕 f S)²` (Parseval via L² norm). -/
+theorem l2Norm_sq_eq_sum_fourierCoeff_sq (f : Cube n → ℝ) :
+    ‖f‖₂ ^ 2 = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 :=
+  Internal.l2Norm_sq_eq_sum_fourierCoeff_sq f
 
 /-- **Plancherel's Theorem**: `⟪f, g⟫ = ∑ S, (𝓕 f S) · (𝓕 g S)`. -/
 theorem plancherel (f g : Cube n → ℝ) :
@@ -252,6 +250,12 @@ theorem fourierCoeff_convolution (f g : Cube n → ℝ) (S : Finset (Fin n)) :
 theorem blrAcceptProb_eq (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     blrAcceptProb f = 1 / 2 + 1 / 2 * ∑ S : Finset (Fin n), (𝓕 f S) ^ 3 :=
   Internal.blrAcceptProb_eq_proof f hf
+
+/-- **BLR completeness**: If `f` is linear (i.e., `f = χ_S` for some `S`),
+    then the BLR test accepts with probability 1. -/
+theorem blr_completeness (f : Cube n → ℝ) (hf : IsLinear f) :
+    blrAcceptProb f = 1 :=
+  Internal.blr_completeness_proof f hf
 
 /-- **Theorem 1.30** (BLR soundness): If the BLR test accepts `f` with
     probability `1 - ε`, then `f` is `ε`-close to being linear. -/

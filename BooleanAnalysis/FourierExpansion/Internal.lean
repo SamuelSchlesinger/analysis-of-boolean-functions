@@ -79,6 +79,29 @@ theorem parityFun_sq (S : Finset (Fin n)) (x : Cube n) :
 theorem parityFun_zero (S : Finset (Fin n)) : (χ S) 0 = 1 := by
   simp [parityFun, chi_zero]
 
+/-- **Fact 1.7**: `𝔼[χ S] = 1` if `S = ∅` and `𝔼[χ S] = 0` if `S ≠ ∅`. -/
+theorem expect_parityFun_proof (S : Finset (Fin n)) :
+    𝔼[χ S] = if S = ∅ then 1 else 0 := by
+  split_ifs with h
+  · subst h; simp [expect, parityFun_empty, Fintype.card_fin, ZMod.card]
+  · simp only [expect]
+    obtain ⟨j, hj⟩ := Finset.nonempty_of_ne_empty h
+    let ej : Cube n := Pi.single j 1
+    have hej : (χ S) ej = -1 := by
+      simp only [parityFun]
+      have hprod : ∀ i ∈ S, chi (ej i) = if i = j then -1 else 1 := by
+        intro i _; simp only [ej, Pi.single_apply]; split_ifs <;> simp [chi_zero, chi_one]
+      rw [Finset.prod_congr rfl hprod]
+      simp [hj]
+    suffices ∑ x : Cube n, (χ S) x = 0 by rw [this, mul_zero]
+    have hself : ∑ x : Cube n, (χ S) x = -(∑ x : Cube n, (χ S) x) := by
+      conv_lhs =>
+        rw [Fintype.sum_equiv (Equiv.addRight ej) _ (fun y => -(χ S) y) (fun x => by
+          show (χ S) x = -(χ S) (x + ej)
+          rw [parityFun_add, hej, mul_neg_one, neg_neg])]
+      rw [Finset.sum_neg_distrib]
+    linarith
+
 /-- **Definition 1.11** (explicit form): For Boolean-valued `f`,
     `𝔼[f] = Pr[f = 1] - Pr[f = -1]`. -/
 theorem expect_boolean_eq_prob_diff (f : Cube n → ℝ) (hf : IsBooleanValued f) :
@@ -184,6 +207,38 @@ theorem fourier_expansion_proof (f : Cube n → ℝ) (x : Cube n) :
   simp_rw [← Finset.mul_sum, sum_parityFun, hadd_zero, mul_ite, mul_zero]
   rw [Finset.sum_ite_eq' Finset.univ x, if_pos (Finset.mem_univ _)]
   field_simp
+
+/-- **Fourier uniqueness**: If `f(x) = ∑_S c_S · χ_S(x)` for all `x`,
+    then `c_S = 𝓕 f S` for all `S`. -/
+theorem fourier_uniqueness_proof (f : Cube n → ℝ) (c : Finset (Fin n) → ℝ)
+    (h : ∀ x, f x = ∑ S : Finset (Fin n), c S * (χ S) x)
+    (T : Finset (Fin n)) : c T = 𝓕 f T := by
+  have key : ∀ S, 𝔼[fun x => (χ S) x * (χ T) x] = if S = T then 1 else 0 := by
+    intro S
+    have : (fun x => (χ S) x * (χ T) x) = (χ (symmDiff S T)) := by
+      ext x; exact parityFun_mul S T x
+    rw [this, expect_parityFun_proof]
+    have : symmDiff S T = ∅ ↔ S = T := symmDiff_eq_bot
+    simp [this]
+  simp only [fourierCoeff, innerProd, expect]
+  have step1 : ∑ x : Cube n, f x * (χ T) x =
+    ∑ x : Cube n, ∑ S : Finset (Fin n), c S * ((χ S) x * (χ T) x) := by
+    apply Finset.sum_congr rfl; intro x _; rw [h x, Finset.sum_mul]
+    apply Finset.sum_congr rfl; intro S _; ring
+  rw [step1]
+  rw [Finset.sum_comm (s := Finset.univ (α := Cube n)) (t := Finset.univ (α := Finset (Fin n)))]
+  rw [show 1 / (2 : ℝ) ^ n *
+    ∑ S : Finset (Fin n), ∑ x : Cube n, c S * ((χ S) x * (χ T) x) =
+    ∑ S : Finset (Fin n), c S * (1 / (2 : ℝ) ^ n * ∑ x : Cube n, (χ S) x * (χ T) x) from by
+    rw [Finset.mul_sum]; apply Finset.sum_congr rfl; intro S _
+    simp_rw [Finset.mul_sum, show ∀ i : Cube n, 1 / (2 : ℝ) ^ n * (c S * ((χ S) i * (χ T) i)) =
+      c S * (1 / (2 : ℝ) ^ n * ((χ S) i * (χ T) i)) from fun i => by ring]]
+  have step4 : ∀ S : Finset (Fin n),
+    c S * (1 / (2 : ℝ) ^ n * ∑ x : Cube n, (χ S) x * (χ T) x) =
+    c S * (if S = T then 1 else 0) := by
+    intro S; congr 1
+    have := key S; simp only [expect] at this; exact this
+  simp_rw [step4, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, if_true]
 
 /-- **Plancherel's theorem**: `⟪f, g⟫ = ∑_S 𝓕 f S · 𝓕 g S`. -/
 theorem plancherel_proof (f g : Cube n → ℝ) :
@@ -384,8 +439,8 @@ theorem local_correctability_proof (f : Cube n → ℝ) (_hf : IsBooleanValued f
 
 /-! ### Helpers for §1.6 (BLR acceptance probability and soundness) -/
 
-/-- Parseval's theorem for Boolean-valued functions (internal version). -/
-theorem parseval_boolean_internal (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+/-- Parseval's theorem for Boolean-valued functions. -/
+theorem parseval_boolean_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 := by
   have h : ⟪f, f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
     rw [plancherel_proof]; congr 1; ext S; rw [sq]
@@ -397,7 +452,7 @@ theorem parseval_boolean_internal (f : Cube n → ℝ) (hf : IsBooleanValued f) 
 /-- For Boolean `f`, `(𝓕 f S)² ≤ 1`. -/
 theorem fourierCoeff_sq_le_one (f : Cube n → ℝ) (hf : IsBooleanValued f)
     (S : Finset (Fin n)) : (𝓕 f S) ^ 2 ≤ 1 := by
-  linarith [parseval_boolean_internal f hf,
+  linarith [parseval_boolean_proof f hf,
     Finset.single_le_sum (fun T (_ : T ∈ Finset.univ) => sq_nonneg (𝓕 f T))
       (Finset.mem_univ S)]
 
@@ -475,6 +530,21 @@ theorem blrAcceptProb_eq_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     (fun y => 1/2 + 1/2 * (f x * f y * f (x + y))) from by ext y; ring]
   rw [expect_add_const, expect_scale]
 
+/-- **BLR completeness**: If `f` is linear (i.e., `f = χ_S` for some `S`),
+    then the BLR test accepts with probability 1. -/
+theorem blr_completeness_proof (f : Cube n → ℝ) (hf : IsLinear f) :
+    blrAcceptProb f = 1 := by
+  obtain ⟨S, hS⟩ := hf
+  unfold blrAcceptProb prob₂
+  have hev : ∀ x y : Cube n, f x * f y = f (x + y) := by
+    intro x y; simp only [hS, parityFun_add]
+  have hind : ∀ x : Cube n, 𝔼[𝟙 (fun y => f x * f y = f (x + y))] = 1 := by
+    intro x
+    have : (𝟙 (fun y => f x * f y = f (x + y)) : Cube n → ℝ) = fun _ => 1 := by
+      ext y; simp [indicator, hev x y]
+    rw [this]; simp [expect, Fintype.card_fin, ZMod.card]
+  simp_rw [hind]; simp [expect, Fintype.card_fin, ZMod.card]
+
 /-- BLR soundness: if the BLR test accepts with probability `≥ 1 - ε`,
     then `f` is `ε`-close to a linear function. -/
 theorem blr_soundness_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : ℝ)
@@ -482,7 +552,7 @@ theorem blr_soundness_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : 
     IsCloseToProperty ε f IsLinear := by
   have hblr := blrAcceptProb_eq_proof f hf
   have hsum3 : ∑ S : Finset (Fin n), (𝓕 f S) ^ 3 ≥ 1 - 2 * ε := by linarith
-  have hpars := parseval_boolean_internal f hf
+  have hpars := parseval_boolean_proof f hf
   obtain ⟨S₀, _, hmax⟩ := Finset.exists_max_image Finset.univ (𝓕 f ·)
     ⟨∅, Finset.mem_univ _⟩
   have hmax' : ∀ T, 𝓕 f T ≤ 𝓕 f S₀ := fun T => hmax T (Finset.mem_univ T)
@@ -495,5 +565,26 @@ theorem blr_soundness_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : 
   have hdist := hammingDist_eq_fourier f hf S₀
   have hclose : hammingDist f (χ S₀) ≤ ε := by linarith
   exact ⟨χ S₀, ⟨S₀, fun _ => rfl⟩, hclose⟩
+
+/-! ### Helpers for §1.4 (L² norm connection to Parseval) -/
+
+/-- The inner product `⟪f, f⟫` is nonneg (it is an average of squares). -/
+theorem innerProd_self_nonneg (f : Cube n → ℝ) : 0 ≤ ⟪f, f⟫ := by
+  simp only [innerProd, expect]
+  apply mul_nonneg
+  · positivity
+  · apply Finset.sum_nonneg; intro x _; exact mul_self_nonneg (a := f x)
+
+/-- `‖f‖₂² = ⟪f, f⟫`: squaring the L² norm recovers the inner product. -/
+theorem l2Norm_sq_eq_innerProd (f : Cube n → ℝ) : ‖f‖₂ ^ 2 = ⟪f, f⟫ := by
+  unfold l2Norm
+  exact Real.sq_sqrt (innerProd_self_nonneg f)
+
+/-- `‖f‖₂² = ∑_S (𝓕 f S)²`: the L² norm squared equals the sum of squared
+    Fourier coefficients (Parseval via L² norm). -/
+theorem l2Norm_sq_eq_sum_fourierCoeff_sq (f : Cube n → ℝ) :
+    ‖f‖₂ ^ 2 = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
+  rw [l2Norm_sq_eq_innerProd, plancherel_proof]
+  congr 1; ext S; rw [sq]
 
 end BooleanAnalysis.Internal

@@ -78,11 +78,6 @@ noncomputable def innerProd (f g : Cube n → ℝ) : ℝ :=
 
 scoped notation "⟪" f ", " g "⟫" => innerProd f g
 
-/-- The `L^p` norm of `f : 𝔽₂ⁿ → ℝ`:
-    `‖f‖_p = 𝔼[|f|^p]^{1/p}`. (§1.3, page 24) -/
-noncomputable def lpNorm (p : ℝ) (f : Cube n → ℝ) : ℝ :=
-  (𝔼[fun x => |f x| ^ p]) ^ (1 / p)
-
 /-- The `L²` norm: `‖f‖₂ = √⟪f, f⟫`. (§1.3, page 24) -/
 noncomputable def l2Norm (f : Cube n → ℝ) : ℝ :=
   Real.sqrt ⟪f, f⟫
@@ -152,12 +147,6 @@ noncomputable def hammingDist (f g : Cube n → ℝ) : ℝ :=
 noncomputable def fourierWeight (f : Cube n → ℝ) (S : Finset (Fin n)) : ℝ :=
   𝓕 f S ^ 2
 
-/-- The spectral sample for a Boolean-valued `f`, the distribution on
-    subsets of `[n]` where `S` has probability `(𝓕 f S)²`.
-    (Definition 1.18) -/
-noncomputable def spectralSample (f : Cube n → ℝ) (S : Finset (Fin n)) : ℝ :=
-  fourierWeight f S
-
 /-- The Fourier weight of `f` at degree `k`:
     `𝐖 f k = ∑_{|S|=k} (𝓕 f S)²`. (Definition 1.19) -/
 noncomputable def fourierWeightAtDegree (f : Cube n → ℝ) (k : ℕ) : ℝ :=
@@ -184,10 +173,15 @@ noncomputable def fourierWeightAbove (f : Cube n → ℝ) (k : ℕ) : ℝ :=
   ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin n) => S.card > k),
     fourierWeight f S
 
-/-- The *(real) degree* of `f : 𝔽₂ⁿ → ℝ` (assuming `f` is not identically 0):
-    `deg(f) = max { |S| : 𝓕 f S ≠ 0 }`. (Exercise 1.10, referenced in main text) -/
-noncomputable def degree (f : Cube n → ℝ) : ℕ :=
-  Finset.sup (Finset.univ.filter (fun S : Finset (Fin n) => 𝓕 f S ≠ 0)) Finset.card
+/-- The *(real) degree* of `f : 𝔽₂ⁿ → ℝ`:
+    `deg(f) = max { |S| : 𝓕 f S ≠ 0 }`. (Exercise 1.10, referenced in main text)
+
+    Returns `none` for the zero function (which has no nonzero Fourier coefficients).
+    The book leaves the degree undefined in this case. -/
+noncomputable def degree (f : Cube n → ℝ) : Option ℕ :=
+  let support := Finset.univ.filter (fun S : Finset (Fin n) => 𝓕 f S ≠ 0)
+  if support = ∅ then none
+  else some (support.sup Finset.card)
 
 /-! ### §1.5 Probability densities and convolution -/
 
@@ -198,7 +192,11 @@ structure IsDensity (φ : Cube n → ℝ) : Prop where
   expect_one : 𝔼[φ] = 1
 
 /-- The density function associated to a nonempty set `A ⊆ 𝔽₂ⁿ`:
-    `φ_A = (1 / 𝔼[𝟙 A]) · 𝟙 A`. (Definition 1.22) -/
+    `φ_A = (1 / 𝔼[𝟙 A]) · 𝟙 A`. (Definition 1.22)
+
+    **Warning**: This definition is junk when `A = ∅`, since it divides by
+    `𝔼[𝟙 ∅] = 0`. The book requires `A` to be nonempty. Theorems using
+    `setDensity` should include a hypothesis `A.Nonempty` where needed. -/
 noncomputable def setDensity (A : Finset (Cube n)) : Cube n → ℝ :=
   fun x => (1 / 𝔼[𝟙 (· ∈ A)]) * (𝟙 (· ∈ A)) x
 
