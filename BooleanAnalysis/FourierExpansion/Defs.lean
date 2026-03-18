@@ -19,6 +19,7 @@ the book's conventions:
 
 * `𝔼[f]` — uniform expectation over the Hamming cube
 * `⟪f, g⟫` — inner product `𝔼[f·g]`
+* `‖f‖₂` — L² norm `√⟪f, f⟫`
 * `χ S` — parity function on set `S`
 * `𝓕 f S` — Fourier coefficient of `f` on `S`
 * `𝐖 f k` — Fourier weight of `f` at degree `k`
@@ -77,6 +78,17 @@ noncomputable def innerProd (f g : Cube n → ℝ) : ℝ :=
 
 scoped notation "⟪" f ", " g "⟫" => innerProd f g
 
+/-- The `L^p` norm of `f : 𝔽₂ⁿ → ℝ`:
+    `‖f‖_p = 𝔼[|f|^p]^{1/p}`. (§1.3, page 24) -/
+noncomputable def lpNorm (p : ℝ) (f : Cube n → ℝ) : ℝ :=
+  (𝔼[fun x => |f x| ^ p]) ^ (1 / p)
+
+/-- The `L²` norm: `‖f‖₂ = √⟪f, f⟫`. (§1.3, page 24) -/
+noncomputable def l2Norm (f : Cube n → ℝ) : ℝ :=
+  Real.sqrt ⟪f, f⟫
+
+scoped notation "‖" f "‖₂" => l2Norm f
+
 /-- The Fourier coefficient `𝓕 f S = ⟪f, χ S⟫`.
     (Proposition 1.8 / our definition) -/
 noncomputable def fourierCoeff (f : Cube n → ℝ) (S : Finset (Fin n)) : ℝ :=
@@ -84,7 +96,11 @@ noncomputable def fourierCoeff (f : Cube n → ℝ) (S : Finset (Fin n)) : ℝ :
 
 scoped notation "𝓕" => fourierCoeff
 
-/-! ### §1.4 Variance, covariance, mean -/
+/-! ### §1.4 Mean, variance, covariance -/
+
+/-- A function `f : 𝔽₂ⁿ → ℝ` is *unbiased* (or *balanced*) if `𝔼[f] = 0`.
+    (Definition 1.11) -/
+def IsUnbiased (f : Cube n → ℝ) : Prop := 𝔼[f] = 0
 
 /-- The variance of `f : 𝔽₂ⁿ → ℝ`, defined as
     `Var[f] = 𝔼[f²] - 𝔼[f]²`. (Proposition 1.13) -/
@@ -161,6 +177,17 @@ noncomputable def degreePart (f : Cube n → ℝ) (k : ℕ) : Cube n → ℝ :=
 noncomputable def lowDegreePart (f : Cube n → ℝ) (k : ℕ) : Cube n → ℝ :=
   fun x => ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin n) => S.card ≤ k),
     𝓕 f S * (χ S) x
+
+/-- The Fourier weight of `f` at degrees above `k`:
+    `𝐖^{>k}[f] = ∑_{|S|>k} (𝓕 f S)²`. (Definition 1.19) -/
+noncomputable def fourierWeightAbove (f : Cube n → ℝ) (k : ℕ) : ℝ :=
+  ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin n) => S.card > k),
+    fourierWeight f S
+
+/-- The *(real) degree* of `f : 𝔽₂ⁿ → ℝ` (assuming `f` is not identically 0):
+    `deg(f) = max { |S| : 𝓕 f S ≠ 0 }`. (Exercise 1.10, referenced in main text) -/
+noncomputable def degree (f : Cube n → ℝ) : ℕ :=
+  Finset.sup (Finset.univ.filter (fun S : Finset (Fin n) => 𝓕 f S ≠ 0)) Finset.card
 
 /-! ### §1.5 Probability densities and convolution -/
 

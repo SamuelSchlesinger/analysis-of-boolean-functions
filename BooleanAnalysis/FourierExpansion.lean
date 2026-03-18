@@ -159,6 +159,12 @@ theorem fourierCoeff_convolution (f g : Cube n → ℝ) (S : Finset (Fin n)) :
 
 /-! ### §1.6 The BLR test -/
 
+/-- **Equation 1.10**: The BLR acceptance probability in terms of Fourier coefficients:
+    `Pr_{x,y}[f(x)·f(y) = f(x+y)] = 1/2 + 1/2 · ∑_S (𝓕 f S)³`. -/
+theorem blrAcceptProb_eq (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    blrAcceptProb f = 1 / 2 + 1 / 2 * ∑ S : Finset (Fin n), (𝓕 f S) ^ 3 := by
+  sorry
+
 /-- **Theorem 1.30** (BLR soundness): If the BLR test accepts `f` with
     probability `1 - ε`, then `f` is `ε`-close to being linear. -/
 theorem blr_soundness (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : ℝ)
