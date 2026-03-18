@@ -172,7 +172,7 @@ theorem blr_soundness (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : ℝ)
     with probability at least `1 - 2ε`. -/
 theorem local_correctability (f : Cube n → ℝ) (hf : IsBooleanValued f)
     (S : Finset (Fin n)) (hclose : IsClose ε f (χ S)) (x : Cube n) :
-    𝔼[fun y => if f y * f (x + y) = (χ S) x then (1 : ℝ) else 0] ≥ 1 - 2 * ε := by
+    Pr[fun y => f y * f (x + y) = (χ S) x] ≥ 1 - 2 * ε := by
   sorry
 
 end BooleanAnalysis

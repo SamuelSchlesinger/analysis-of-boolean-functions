@@ -25,14 +25,16 @@ the book's conventions:
 * `Var[f]` — variance of `f`
 * `Cov[f, g]` — covariance of `f` and `g`
 * `f ⊛ g` — convolution
-* `𝟙 A` — indicator function of `A`
+* `𝟙 P` — indicator function of predicate `P`
+* `Pr[P]` — uniform probability `𝔼[𝟙 P]`
+* `Pr₂[P]` — joint uniform probability over pairs
 -/
 
 import Mathlib
 
 namespace BooleanAnalysis
 
-open Finset BigOperators
+open Finset BigOperators Classical
 
 variable {n : ℕ}
 
@@ -98,10 +100,34 @@ noncomputable def covariance (f g : Cube n → ℝ) : ℝ :=
 
 scoped notation "Cov[" f ", " g "]" => covariance f g
 
+/-- The 0-1 indicator function of a predicate `P` on `𝔽₂ⁿ`.
+    `(𝟙 P)(x) = 1` if `P x`, else `0`.
+
+    The book (Definition 1.22) defines `𝟙_A` for a set `A ⊆ 𝔽₂ⁿ`. We generalize
+    to predicates so that probability expressions like `Pr_x[P(x)] = 𝔼[𝟙 P]`
+    read cleanly without `Finset.univ.filter` boilerplate. For the set version,
+    use `𝟙 (· ∈ A)`. -/
+noncomputable def indicator (P : Cube n → Prop) : Cube n → ℝ :=
+  fun x => if P x then 1 else 0
+
+scoped prefix:max "𝟙" => indicator
+
+/-- The uniform probability `Pr_x[P(x)] = 𝔼[𝟙 P]`. -/
+noncomputable def prob (P : Cube n → Prop) : ℝ := 𝔼[𝟙 P]
+
+scoped notation "Pr[" P "]" => prob P
+
+/-- The joint uniform probability `Pr_{x,y}[P(x,y)] = 𝔼_x[𝔼_y[𝟙 (P x)]]`.
+    Equivalent to the uniform probability over the product space by Fubini. -/
+noncomputable def prob₂ (P : Cube n → Cube n → Prop) : ℝ :=
+  𝔼[fun x => 𝔼[𝟙 (P x)]]
+
+scoped notation "Pr₂[" P "]" => prob₂ P
+
 /-- The relative Hamming distance between functions `f` and `g`,
     `dist(f, g) = Pr_x[f(x) ≠ g(x)]`. (Definition 1.10) -/
 noncomputable def hammingDist (f g : Cube n → ℝ) : ℝ :=
-  𝔼[fun x => if f x = g x then 0 else 1]
+  Pr[fun x => f x ≠ g x]
 
 /-! ### §1.4 Fourier weight distribution -/
 
@@ -144,17 +170,10 @@ structure IsDensity (φ : Cube n → ℝ) : Prop where
   nonneg : ∀ x, 0 ≤ φ x
   expect_one : 𝔼[φ] = 1
 
-/-- The 0-1 indicator function of a set `A ⊆ 𝔽₂ⁿ`.
-    `(𝟙 A)(x) = 1` if `x ∈ A`, else `0`. (Definition 1.22) -/
-noncomputable def indicator (A : Finset (Cube n)) : Cube n → ℝ :=
-  fun x => if x ∈ A then 1 else 0
-
-scoped prefix:max "𝟙" => indicator
-
 /-- The density function associated to a nonempty set `A ⊆ 𝔽₂ⁿ`:
     `φ_A = (1 / 𝔼[𝟙 A]) · 𝟙 A`. (Definition 1.22) -/
 noncomputable def setDensity (A : Finset (Cube n)) : Cube n → ℝ :=
-  fun x => (1 / 𝔼[𝟙 A]) * (𝟙 A) x
+  fun x => (1 / 𝔼[𝟙 (· ∈ A)]) * (𝟙 (· ∈ A)) x
 
 /-- The convolution of `f, g : 𝔽₂ⁿ → ℝ`, defined by
     `(f ⊛ g)(x) = 𝔼_y[f(y)·g(x + y)]`. (Definition 1.24) -/
@@ -185,6 +204,6 @@ def IsCloseToProperty (ε : ℝ) (f : Cube n → ℝ)
 /-- The BLR acceptance probability: `Pr_{x,y}[f(x)·f(y) = f(x+y)]`,
     which equals `1/2 + 1/2 · ∑_S 𝓕 f S ^ 3`. -/
 noncomputable def blrAcceptProb (f : Cube n → ℝ) : ℝ :=
-  𝔼[fun x => 𝔼[fun y => if f x * f y = f (x + y) then (1 : ℝ) else 0]]
+  Pr₂[fun x y => f x * f y = f (x + y)]
 
 end BooleanAnalysis
