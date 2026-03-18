@@ -31,7 +31,9 @@ the book's conventions:
 * `Pr₂[P]` — joint uniform probability over pairs
 -/
 
-import Mathlib
+import Mathlib.Algebra.BigOperators.Expect
+import Mathlib.Data.Real.Sqrt
+import Mathlib.Data.ZMod.Basic
 
 namespace BooleanAnalysis
 
@@ -67,7 +69,7 @@ scoped prefix:max "χ" => parityFun
 
 /-- The uniform expectation `𝔼[f] = 2⁻ⁿ · ∑_x f(x)`. -/
 noncomputable def expect (f : Cube n → ℝ) : ℝ :=
-  (1 : ℝ) / 2 ^ n * ∑ x : Cube n, f x
+  Finset.univ.expect f
 
 scoped notation "𝔼[" f "]" => expect f
 

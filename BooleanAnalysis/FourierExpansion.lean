@@ -140,7 +140,7 @@ theorem variance_boolean (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     Var[f] = 1 - (𝔼[f]) ^ 2 := by
   unfold variance
   have h1 : 𝔼[fun x => f x ^ 2] = 1 := by
-    simp only [expect]
+    simp only [expect_unfold]
     have : ∀ x : Cube n, f x ^ 2 = 1 := by
       intro x; rcases hf x with h | h <;> simp [h]
     rw [Finset.sum_congr rfl (fun x _ => this x)]
@@ -161,10 +161,8 @@ theorem variance_boolean_nonneg (f : Cube n → ℝ) (hf : IsBooleanValued f) :
   rw [variance_boolean f hf]
   have hexp := expect_boolean_eq_prob_diff f hf
   have hsum := prob_boolean_sum_one f hf
-  have hp1 : 0 ≤ Pr[fun x => f x = 1] := by
-    simp only [prob, expect, indicator]; positivity
-  have hp2 : 0 ≤ Pr[fun x => f x = -1] := by
-    simp only [prob, expect, indicator]; positivity
+  have hp1 : 0 ≤ Pr[fun x => f x = 1] := prob_nonneg _
+  have hp2 : 0 ≤ Pr[fun x => f x = -1] := prob_nonneg _
   nlinarith [sq_nonneg (𝔼[f])]
 
 /-- **Fact 1.14** (upper bound): For Boolean-valued `f`, `Var[f] ≤ 1`. -/

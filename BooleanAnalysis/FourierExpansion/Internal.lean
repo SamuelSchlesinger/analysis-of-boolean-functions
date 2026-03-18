@@ -18,6 +18,11 @@ open Finset BigOperators BooleanAnalysis
 
 variable {n : ℕ}
 
+/-- Bridge lemma: unfold `𝔼[f]` to the explicit sum form `1/2^n · ∑_x f(x)`. -/
+theorem expect_unfold (f : Cube n → ℝ) :
+    𝔼[f] = 1 / 2 ^ n * ∑ x : Cube n, f x := by
+  simp [expect, Finset.expect_eq_sum_div_card, Finset.card_univ, ZMod.card]; ring
+
 /-- `χ(0) = 1`. -/
 @[simp]
 theorem chi_zero : chi (0 : ZMod 2) = 1 := by
@@ -83,8 +88,8 @@ theorem parityFun_zero (S : Finset (Fin n)) : (χ S) 0 = 1 := by
 theorem expect_parityFun_proof (S : Finset (Fin n)) :
     𝔼[χ S] = if S = ∅ then 1 else 0 := by
   split_ifs with h
-  · subst h; simp [expect, parityFun_empty, Fintype.card_fin, ZMod.card]
-  · simp only [expect]
+  · subst h; simp [expect_unfold, parityFun_empty, Fintype.card_fin, ZMod.card]
+  · simp only [expect_unfold]
     obtain ⟨j, hj⟩ := Finset.nonempty_of_ne_empty h
     let ej : Cube n := Pi.single j 1
     have hej : (χ S) ej = -1 := by
@@ -106,7 +111,7 @@ theorem expect_parityFun_proof (S : Finset (Fin n)) :
     `𝔼[f] = Pr[f = 1] - Pr[f = -1]`. -/
 theorem expect_boolean_eq_prob_diff (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     𝔼[f] = Pr[fun x => f x = 1] - Pr[fun x => f x = -1] := by
-  simp only [prob, expect, indicator]
+  simp only [prob, expect_unfold, indicator]
   rw [← mul_sub, ← Finset.sum_sub_distrib]
   congr 1
   apply Finset.sum_congr rfl
@@ -117,7 +122,7 @@ theorem expect_boolean_eq_prob_diff (f : Cube n → ℝ) (hf : IsBooleanValued f
     (Implicit in Definition 1.11: every input maps to exactly one of `1` or `-1`.) -/
 theorem prob_boolean_sum_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     Pr[fun x => f x = 1] + Pr[fun x => f x = -1] = 1 := by
-  simp only [prob, expect, indicator]
+  simp only [prob, expect_unfold, indicator]
   rw [← mul_add, ← Finset.sum_add_distrib]
   have : ∀ x : Cube n, (if f x = 1 then (1 : ℝ) else 0) + (if f x = -1 then 1 else 0) = 1 := by
     intro x; rcases hf x with h | h <;> simp [h, show (1 : ℝ) ≠ -1 by norm_num, show (-1 : ℝ) ≠ 1 by norm_num]
@@ -128,7 +133,7 @@ theorem prob_boolean_sum_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
 theorem innerProd_add_two_hammingDist (f g : Cube n → ℝ)
     (hf : IsBooleanValued f) (hg : IsBooleanValued g) :
     ⟪f, g⟫ + 2 * hammingDist f g = 1 := by
-  simp only [innerProd, hammingDist, prob, indicator, expect]
+  simp only [innerProd, hammingDist, prob, indicator, expect_unfold]
   have h2n : (0 : ℝ) < 2 ^ n := pow_pos two_pos n
   have hkey : ∀ x : Cube n, f x * g x + 2 * (@ite ℝ (f x ≠ g x) (Classical.propDecidable _) 1 0) = 1 := by
     intro x
@@ -186,7 +191,7 @@ theorem sum_parityFun (z : Cube n) :
 /-- The Fourier expansion: `f(x) = ∑_S 𝓕 f S · χ_S(x)`. -/
 theorem fourier_expansion_proof (f : Cube n → ℝ) (x : Cube n) :
     f x = ∑ S : Finset (Fin n), 𝓕 f S * (χ S) x := by
-  simp only [fourierCoeff, innerProd, expect]
+  simp only [fourierCoeff, innerProd, expect_unfold]
   have h2n : (0 : ℝ) < 2 ^ n := pow_pos two_pos n
   have hadd_zero : ∀ y : Cube n, y + x = 0 ↔ y = x := by
     intro y; constructor
@@ -220,7 +225,7 @@ theorem fourier_uniqueness_proof (f : Cube n → ℝ) (c : Finset (Fin n) → �
     rw [this, expect_parityFun_proof]
     have : symmDiff S T = ∅ ↔ S = T := symmDiff_eq_bot
     simp [this]
-  simp only [fourierCoeff, innerProd, expect]
+  simp only [fourierCoeff, innerProd, expect_unfold]
   have step1 : ∑ x : Cube n, f x * (χ T) x =
     ∑ x : Cube n, ∑ S : Finset (Fin n), c S * ((χ S) x * (χ T) x) := by
     apply Finset.sum_congr rfl; intro x _; rw [h x, Finset.sum_mul]
@@ -237,21 +242,22 @@ theorem fourier_uniqueness_proof (f : Cube n → ℝ) (c : Finset (Fin n) → �
     c S * (1 / (2 : ℝ) ^ n * ∑ x : Cube n, (χ S) x * (χ T) x) =
     c S * (if S = T then 1 else 0) := by
     intro S; congr 1
-    have := key S; simp only [expect] at this; exact this
+    have := key S; simp only [expect_unfold] at this; exact this
   simp_rw [step4, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, if_true]
 
 /-- **Plancherel's theorem**: `⟪f, g⟫ = ∑_S 𝓕 f S · 𝓕 g S`. -/
 theorem plancherel_proof (f g : Cube n → ℝ) :
     ⟪f, g⟫ = ∑ S : Finset (Fin n), 𝓕 f S * 𝓕 g S := by
   have hg := fourier_expansion_proof g
-  simp only [innerProd, expect]
+  simp only [innerProd, expect_unfold]
   rw [Finset.mul_sum]
   simp_rw [hg, Finset.mul_sum]
   rw [Finset.sum_comm]
   apply Finset.sum_congr rfl; intro S _
   simp_rw [show ∀ x : Cube n, 1 / (2 : ℝ) ^ n * (f x * (fourierCoeff g S * (χ S) x)) =
     fourierCoeff g S * (1 / (2 : ℝ) ^ n * (f x * (χ S) x)) from fun x => by ring]
-  rw [← Finset.mul_sum, mul_comm, ← Finset.mul_sum]; rfl
+  rw [← Finset.mul_sum, mul_comm, ← Finset.mul_sum]
+  simp [fourierCoeff, innerProd, expect_unfold]
 
 /-! ### Helpers for §1.4 Proposition 1.15 (variance–distance bounds) -/
 
@@ -291,7 +297,7 @@ theorem cube_add_right_cancel (z y : Cube n) : z + y + y = z := by
 /-- `setDensity {0}` evaluates to `2^n` at `0` and `0` elsewhere. -/
 theorem setDensity_singleton_zero_ite (y : Cube n) :
     setDensity ({0} : Finset (Cube n)) y = if y = 0 then (2 : ℝ) ^ n else 0 := by
-  unfold setDensity indicator expect
+  unfold setDensity indicator; simp only [expect_unfold]
   simp only [Finset.mem_singleton]
   split_ifs with hy
   · subst hy; simp only [Finset.sum_ite_eq', Finset.mem_univ, if_true]; field_simp
@@ -303,7 +309,7 @@ theorem setDensity_singleton_zero_proof :
       ∑ S : Finset (Fin n), (χ S) y := by
   intro y
   unfold setDensity
-  rw [sum_parityFun]; unfold indicator expect
+  rw [sum_parityFun]; unfold indicator; simp only [expect_unfold]
   simp only [Finset.mem_singleton]
   split_ifs with hy
   · subst hy; simp only [Finset.sum_ite_eq', Finset.mem_univ, if_true]; field_simp
@@ -312,7 +318,7 @@ theorem setDensity_singleton_zero_proof :
 /-- Every Fourier coefficient of `setDensity {0}` is `1`. -/
 theorem fourierCoeff_setDensity_singleton_zero_proof (S : Finset (Fin n)) :
     𝓕 (setDensity ({0} : Finset (Cube n))) S = 1 := by
-  simp only [fourierCoeff, innerProd, expect]
+  simp only [fourierCoeff, innerProd, expect_unfold]
   simp_rw [setDensity_singleton_zero_ite]
   simp_rw [ite_mul, zero_mul]
   rw [Finset.sum_ite_eq', if_pos (Finset.mem_univ _)]
@@ -324,12 +330,12 @@ theorem convolution_density_isDensity_proof (φ ψ : Cube n → ℝ)
     IsDensity (φ ⊛ ψ) := by
   constructor
   · intro x
-    simp only [convolution, expect]
+    simp only [convolution, expect_unfold]
     apply mul_nonneg
     · positivity
     · apply Finset.sum_nonneg; intro y _
       exact mul_nonneg (hφ.nonneg y) (hψ.nonneg (x + y))
-  · simp only [convolution, expect]
+  · simp only [convolution, expect_unfold]
     have hshift : ∀ y : Cube n, ∑ x : Cube n, ψ (x + y) = ∑ x : Cube n, ψ x := by
       intro y; exact Equiv.sum_comp (Equiv.addRight y) ψ
     rw [show (1 : ℝ) / 2 ^ n * ∑ x, 1 / 2 ^ n * ∑ y, φ y * ψ (x + y) =
@@ -341,13 +347,13 @@ theorem convolution_density_isDensity_proof (φ ψ : Cube n → ℝ)
     simp_rw [h1, ← Finset.sum_mul]
     have hφ1 := hφ.expect_one
     have hψ1 := hψ.expect_one
-    unfold expect at hφ1 hψ1
+    simp only [expect_unfold] at hφ1 hψ1
     nlinarith
 
 /-- The convolution theorem: `𝓕 (f ⊛ g) S = (𝓕 f S) · (𝓕 g S)`. -/
 theorem fourierCoeff_convolution_proof (f g : Cube n → ℝ) (S : Finset (Fin n)) :
     𝓕 (f ⊛ g) S = (𝓕 f S) * (𝓕 g S) := by
-  simp only [fourierCoeff, innerProd, convolution, expect]
+  simp only [fourierCoeff, innerProd, convolution, expect_unfold]
   have hinner : ∀ y : Cube n, ∑ x : Cube n, g (x + y) * (χ S) x =
     (χ S) y * ∑ z : Cube n, g z * (χ S) z := by
     intro y
@@ -380,7 +386,7 @@ theorem fourierCoeff_convolution_proof (f g : Cube n → ℝ) (S : Finset (Fin n
 
 /-- `Pr[P] + Pr[¬P] = 1`. -/
 theorem prob_compl (P : Cube n → Prop) : Pr[P] + Pr[fun x => ¬ P x] = 1 := by
-  simp only [prob, expect, indicator]
+  simp only [prob, expect_unfold, indicator]
   rw [← mul_add, ← Finset.sum_add_distrib]
   have : ∀ x : Cube n,
     (@ite ℝ (P x) (Classical.propDecidable _) 1 0) +
@@ -391,13 +397,14 @@ theorem prob_compl (P : Cube n → Prop) : Pr[P] + Pr[fun x => ¬ P x] = 1 := by
 
 /-- `0 ≤ Pr[P]`. -/
 theorem prob_nonneg (P : Cube n → Prop) : 0 ≤ Pr[P] := by
-  simp only [prob, expect, indicator]; positivity
+  simp only [prob, indicator, expect_unfold]
+  apply mul_nonneg (by positivity) (Finset.sum_nonneg (fun x _ => by split_ifs <;> norm_num))
 
 /-- Union bound: if `¬P ⊆ Q ∪ R` then `Pr[¬P] ≤ Pr[Q] + Pr[R]`. -/
 theorem prob_union_bound {P Q R : Cube n → Prop}
     (h : ∀ x, ¬ P x → Q x ∨ R x) :
     Pr[fun x => ¬ P x] ≤ Pr[Q] + Pr[R] := by
-  simp only [prob, expect, indicator]
+  simp only [prob, expect_unfold, indicator]
   rw [← mul_add, ← Finset.sum_add_distrib]
   apply mul_le_mul_of_nonneg_left _ (by positivity)
   apply Finset.sum_le_sum; intro x _
@@ -410,7 +417,7 @@ theorem prob_union_bound {P Q R : Cube n → Prop}
 /-- Shift invariance of probability: `Pr_y[P(x + y)] = Pr_z[P(z)]`. -/
 theorem prob_shift (P : Cube n → Prop) (x : Cube n) :
     Pr[fun y => P (x + y)] = Pr[P] := by
-  simp only [prob, expect, indicator]; congr 1
+  simp only [prob, expect_unfold, indicator]; congr 1
   exact Equiv.sum_comp (Equiv.addLeft x)
     (fun z => @ite ℝ (P z) (Classical.propDecidable _) 1 0)
 
@@ -444,7 +451,7 @@ theorem parseval_boolean_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) :
     ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 := by
   have h : ⟪f, f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
     rw [plancherel_proof]; congr 1; ext S; rw [sq]
-  rw [← h]; simp only [innerProd, expect]
+  rw [← h]; simp only [innerProd, expect_unfold]
   simp_rw [show ∀ x : Cube n, f x * f x = 1 from
     fun x => by rcases hf x with h | h <;> simp [h],
     Finset.sum_const, nsmul_eq_mul, mul_one, Finset.card_univ]; simp [ZMod.card]
@@ -487,7 +494,7 @@ theorem blr_indicator_eq (f : Cube n → ℝ) (hf : IsBooleanValued f) (x y : Cu
 /-- `𝔼_x[𝔼_y[f(x)·f(y)·f(x+y)]] = ⟪f, f ⊛ f⟫`. -/
 theorem triple_expect_eq (f : Cube n → ℝ) :
     𝔼[fun x => 𝔼[fun y => f x * f y * f (x + y)]] = ⟪f, f ⊛ f⟫ := by
-  simp only [innerProd, convolution, expect]
+  simp only [innerProd, convolution, expect_unfold]
   congr 1; apply Finset.sum_congr rfl; intro x _
   simp_rw [show ∀ y : Cube n,
     f x * f y * f (x + y) = f x * (f y * f (x + y)) from fun y => by ring,
@@ -502,14 +509,12 @@ theorem innerProd_conv_eq_sum_cube (f : Cube n → ℝ) :
 /-- Linearity of expectation: `𝔼[c + g] = c + 𝔼[g]`. -/
 theorem expect_add_const (c : ℝ) (g : Cube n → ℝ) :
     𝔼[fun x => c + g x] = c + 𝔼[g] := by
-  unfold expect
-  rw [Finset.sum_add_distrib, Finset.sum_const, nsmul_eq_mul, Finset.card_univ]
-  simp [ZMod.card]; field_simp
+  simp only [expect, Finset.expect_add_distrib, Fintype.expect_const]
 
 /-- Linearity of expectation: `𝔼[c · g] = c · 𝔼[g]`. -/
 theorem expect_scale (c : ℝ) (g : Cube n → ℝ) :
     𝔼[fun x => c * g x] = c * 𝔼[g] := by
-  unfold expect; rw [← Finset.mul_sum]; ring
+  unfold expect; exact (Finset.mul_expect ..).symm
 
 /-- The BLR acceptance probability formula. -/
 theorem blrAcceptProb_eq_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) :
@@ -524,7 +529,7 @@ theorem blrAcceptProb_eq_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) :
   intro x
   rw [show 𝔼[𝟙 (fun y => f x * f y = f (x + y))] =
     𝔼[fun y => (1 + f x * f y * f (x + y)) / 2] from by
-    unfold expect; congr 1; apply Finset.sum_congr rfl; intro y _
+    simp only [expect_unfold]; congr 1; apply Finset.sum_congr rfl; intro y _
     exact blr_indicator_eq f hf x y,
     show (fun y : Cube n => (1 + f x * f y * f (x + y)) / 2) =
     (fun y => 1/2 + 1/2 * (f x * f y * f (x + y))) from by ext y; ring]
@@ -542,8 +547,8 @@ theorem blr_completeness_proof (f : Cube n → ℝ) (hf : IsLinear f) :
     intro x
     have : (𝟙 (fun y => f x * f y = f (x + y)) : Cube n → ℝ) = fun _ => 1 := by
       ext y; simp [indicator, hev x y]
-    rw [this]; simp [expect, Fintype.card_fin, ZMod.card]
-  simp_rw [hind]; simp [expect, Fintype.card_fin, ZMod.card]
+    rw [this]; simp [expect_unfold, Fintype.card_fin, ZMod.card]
+  simp_rw [hind]; simp [expect_unfold, Fintype.card_fin, ZMod.card]
 
 /-- BLR soundness: if the BLR test accepts with probability `≥ 1 - ε`,
     then `f` is `ε`-close to a linear function. -/
@@ -570,7 +575,7 @@ theorem blr_soundness_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : 
 
 /-- The inner product `⟪f, f⟫` is nonneg (it is an average of squares). -/
 theorem innerProd_self_nonneg (f : Cube n → ℝ) : 0 ≤ ⟪f, f⟫ := by
-  simp only [innerProd, expect]
+  simp only [innerProd, expect_unfold]
   apply mul_nonneg
   · positivity
   · apply Finset.sum_nonneg; intro x _; exact mul_self_nonneg (a := f x)
