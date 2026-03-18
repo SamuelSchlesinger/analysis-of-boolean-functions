@@ -65,8 +65,18 @@ theorem plancherel (f g : Cube n → ℝ) :
     ⟪f, g⟫ = ∑ S : Finset (Fin n), (𝓕 f S) * (𝓕 g S) := by
   sorry
 
-/-- **Proposition 1.9**: For Boolean-valued `f, g : {-1,1}ⁿ → {-1,1}`,
-    `⟪f, g⟫ = Pr[f(x) = g(x)] - Pr[f(x) ≠ g(x)] = 1 - 2·dist(f, g)`. -/
+/-- **Proposition 1.9a**: For Boolean-valued `f, g`,
+    `⟪f, g⟫ = Pr_x[f(x) = g(x)] - Pr_x[f(x) ≠ g(x)]`.
+
+    Since `f(x)·g(x) = 1` when they agree and `-1` when they disagree,
+    the inner product `𝔼[f·g]` counts agreement minus disagreement. -/
+theorem innerProd_eq_agree_sub_disagree (f g : Cube n → ℝ)
+    (hf : IsBooleanValued f) (hg : IsBooleanValued g) :
+    ⟪f, g⟫ = (1 - hammingDist f g) - hammingDist f g := by
+  sorry
+
+/-- **Proposition 1.9b**: For Boolean-valued `f, g`,
+    `⟪f, g⟫ = 1 - 2·dist(f, g)`. -/
 theorem innerProd_eq_one_sub_two_dist (f g : Cube n → ℝ)
     (hf : IsBooleanValued f) (hg : IsBooleanValued g) :
     ⟪f, g⟫ = 1 - 2 * hammingDist f g := by
