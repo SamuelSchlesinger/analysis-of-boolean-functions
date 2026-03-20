@@ -23,8 +23,8 @@ variable {n : ℕ}
 
 /-! ### §1.2 The Fourier expansion theorem -/
 
-/-- **Theorem 1.1** (Fourier expansion): Every function `f : 𝔽₂ⁿ → ℝ` can be
-    uniquely expressed as `f(x) = ∑_S 𝓕 f S · (χ S) x`. -/
+/-- **Theorem 1.1** (Fourier expansion existence): Every function `f : 𝔽₂ⁿ → ℝ` can be
+    expressed as `f(x) = ∑_S 𝓕 f S · (χ S) x`. -/
 theorem fourier_expansion (f : Cube n → ℝ) (x : Cube n) :
     f x = ∑ S : Finset (Fin n), 𝓕 f S * (χ S) x :=
   BooleanAnalysis.Internal.fourier_expansion_proof f x
@@ -54,16 +54,19 @@ theorem expect_parityFun (S : Finset (Fin n)) :
     𝔼[χ S] = if S = ∅ then 1 else 0 :=
   Internal.expect_parityFun_proof S
 
-/-- **Theorem 1.5**: The parity functions are orthonormal:
+/-- **Theorem 1.5** (orthonormality): The parity functions are orthonormal:
     `⟪χ S, χ T⟫ = 1` if `S = T` and `0` otherwise. -/
 theorem parityFun_orthonormal (S T : Finset (Fin n)) :
-    ⟪χ S, χ T⟫ = if S = T then 1 else 0 := by
-  simp only [innerProd]
-  have : (fun x => (χ S) x * (χ T) x) = (χ (symmDiff S T)) := by
-    ext x; exact parityFun_mul S T x
-  rw [this, expect_parityFun]
-  have : symmDiff S T = ∅ ↔ S = T := symmDiff_eq_bot
-  simp [this]
+    ⟪χ S, χ T⟫ = if S = T then 1 else 0 :=
+  Internal.parityFun_orthonormal_proof S T
+
+/-- **Theorem 1.5** (spanning): Every function `f : 𝔽₂ⁿ → ℝ` is a linear combination
+    of parity functions. Together with `parityFun_orthonormal`, this establishes
+    that the parity functions form an orthonormal basis for the space of functions
+    `𝔽₂ⁿ → ℝ`. -/
+theorem parityFun_span (f : Cube n → ℝ) :
+    ∃ c : Finset (Fin n) → ℝ, ∀ x, f x = ∑ S : Finset (Fin n), c S * (χ S) x :=
+  ⟨𝓕 f, fourier_expansion f⟩
 
 /-! ### §1.4 Basic Fourier formulas -/
 
@@ -79,8 +82,12 @@ theorem parseval (f : Cube n → ℝ) :
 /-- **Parseval's Theorem** (Boolean case): For Boolean-valued `f`,
     `∑ S, (𝓕 f S) ^ 2 = 1`. -/
 theorem parseval_boolean (f : Cube n → ℝ) (hf : IsBooleanValued f) :
-    ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 :=
-  Internal.parseval_boolean_proof f hf
+    ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 := by
+  rw [← parseval]
+  simp only [innerProd, expect_unfold]
+  simp_rw [show ∀ x : Cube n, f x * f x = 1 from
+    fun x => by rcases hf x with h | h <;> simp [h],
+    Finset.sum_const, nsmul_eq_mul, mul_one, Finset.card_univ]; simp [ZMod.card]
 
 /-- The inner product `⟪f, f⟫` is nonnegative. -/
 theorem innerProd_self_nonneg (f : Cube n → ℝ) : 0 ≤ ⟪f, f⟫ :=
@@ -240,6 +247,24 @@ theorem convolution_density_isDensity (φ ψ : Cube n → ℝ)
 theorem fourierCoeff_convolution (f g : Cube n → ℝ) (S : Finset (Fin n)) :
     𝓕 (f ⊛ g) S = (𝓕 f S) * (𝓕 g S) :=
   Internal.fourierCoeff_convolution_proof f g S
+
+/-! ### §1.6 Linearity characterizations -/
+
+/-- **(1')** For Boolean-valued `f`, linearity is equivalent to multiplicativity:
+    `f = χ S` for some `S` iff `f(x+y) = f(x)·f(y)` for all `x, y`. -/
+theorem isLinear_iff_isMultiplicative (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    IsLinear f ↔ IsMultiplicative f :=
+  Internal.isLinear_iff_isMultiplicative f hf
+
+/-- **(2')** For Boolean-valued `f`, linearity is equivalent to the triple product
+    property plus `f(0) = 1`:
+    `f = χ S` iff `f(x+y+z) = f(x)·f(y)·f(z)` for all `x, y, z` and `f(0) = 1`.
+
+    The condition `f(0) = 1` is necessary: `-χ S` satisfies the triple product
+    property but is not linear (since `(-χ S)(0) = -1 ≠ 1 = (χ T)(0)`). -/
+theorem isLinear_iff_isTripleMultiplicative (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    IsLinear f ↔ IsTripleMultiplicative f ∧ f 0 = 1 :=
+  Internal.isLinear_iff_isTripleMultiplicative f hf
 
 /-! ### §1.6 The BLR test -/
 

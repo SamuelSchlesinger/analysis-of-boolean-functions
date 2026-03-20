@@ -163,6 +163,17 @@ theorem parityFun_mul (S T : Finset (Fin n)) (x : Cube n) :
     rw [← Finset.prod_pow]; simp [chi_sq]
   rw [← hunion, ← hsdiff, mul_assoc, ← sq, hchi_sq, mul_one]
 
+/-- **Theorem 1.5**: The parity functions are orthonormal:
+    `⟪χ S, χ T⟫ = 1` if `S = T` and `0` otherwise. -/
+theorem parityFun_orthonormal_proof (S T : Finset (Fin n)) :
+    ⟪χ S, χ T⟫ = if S = T then 1 else 0 := by
+  simp only [innerProd]
+  have : (fun x => (χ S) x * (χ T) x) = (χ (symmDiff S T)) := by
+    ext x; exact parityFun_mul S T x
+  rw [this, expect_parityFun_proof]
+  have : symmDiff S T = ∅ ↔ S = T := symmDiff_eq_bot
+  simp [this]
+
 /-- Sum of all parity functions at a point: `∑_S χ_S(z) = 2^n` if `z = 0`, else `0`. -/
 theorem sum_parityFun (z : Cube n) :
     ∑ S : Finset (Fin n), (χ S) z = if z = 0 then (2 : ℝ) ^ n else 0 := by
@@ -214,24 +225,24 @@ theorem fourier_expansion_proof (f : Cube n → ℝ) (x : Cube n) :
   field_simp
 
 /-- **Fourier uniqueness**: If `f(x) = ∑_S c_S · χ_S(x)` for all `x`,
-    then `c_S = 𝓕 f S` for all `S`. -/
+    then `c_S = 𝓕 f S` for all `S`.
+
+    Proof: take `⟪–, χ T⟫` of both sides. On the right, orthonormality
+    kills every term except `S = T`, leaving `c T`. On the left we get `𝓕 f T`. -/
 theorem fourier_uniqueness_proof (f : Cube n → ℝ) (c : Finset (Fin n) → ℝ)
     (h : ∀ x, f x = ∑ S : Finset (Fin n), c S * (χ S) x)
     (T : Finset (Fin n)) : c T = 𝓕 f T := by
-  have key : ∀ S, 𝔼[fun x => (χ S) x * (χ T) x] = if S = T then 1 else 0 := by
-    intro S
-    have : (fun x => (χ S) x * (χ T) x) = (χ (symmDiff S T)) := by
-      ext x; exact parityFun_mul S T x
-    rw [this, expect_parityFun_proof]
-    have : symmDiff S T = ∅ ↔ S = T := symmDiff_eq_bot
-    simp [this]
+  -- Orthonormality: ⟪χ S, χ T⟫ = δ_{S,T}  (the key fact)
+  have key : ∀ S, 𝔼[fun x => (χ S) x * (χ T) x] = if S = T then 1 else 0 :=
+    fun S => parityFun_orthonormal_proof S T
+  -- Unfold 𝓕 f T = ⟪f, χ T⟫ and substitute the expansion
   simp only [fourierCoeff, innerProd, expect_unfold]
   have step1 : ∑ x : Cube n, f x * (χ T) x =
     ∑ x : Cube n, ∑ S : Finset (Fin n), c S * ((χ S) x * (χ T) x) := by
     apply Finset.sum_congr rfl; intro x _; rw [h x, Finset.sum_mul]
     apply Finset.sum_congr rfl; intro S _; ring
-  rw [step1]
-  rw [Finset.sum_comm (s := Finset.univ (α := Cube n)) (t := Finset.univ (α := Finset (Fin n)))]
+  rw [step1, Finset.sum_comm]
+  -- Factor out c_S and apply orthonormality to collapse the sum
   rw [show 1 / (2 : ℝ) ^ n *
     ∑ S : Finset (Fin n), ∑ x : Cube n, c S * ((χ S) x * (χ T) x) =
     ∑ S : Finset (Fin n), c S * (1 / (2 : ℝ) ^ n * ∑ x : Cube n, (χ S) x * (χ T) x) from by
@@ -591,5 +602,121 @@ theorem l2Norm_sq_eq_sum_fourierCoeff_sq (f : Cube n → ℝ) :
     ‖f‖₂ ^ 2 = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
   rw [l2Norm_sq_eq_innerProd, plancherel_proof]
   congr 1; ext S; rw [sq]
+
+/-! ### Equivalence of linearity characterizations (§1.6) -/
+
+/-- For Boolean-valued multiplicative `f`, `f(0) = 1`. -/
+theorem multiplicative_zero (f : Cube n → ℝ) (hf : IsBooleanValued f)
+    (hmul : IsMultiplicative f) : f 0 = 1 := by
+  have h := hmul 0 0
+  simp only [add_zero] at h
+  -- f(0) = f(0)², so f(0) = 1 (since f(0) = ±1)
+  rcases hf 0 with h0 | h0
+  · exact h0
+  · exfalso; rw [h0] at h; linarith
+
+/-- Linear implies multiplicative. -/
+theorem isLinear_isMultiplicative (f : Cube n → ℝ) (hlin : IsLinear f) :
+    IsMultiplicative f := by
+  obtain ⟨S, hS⟩ := hlin
+  intro x y; rw [hS, hS, hS, parityFun_add]
+
+/-- A multiplicative function distributes over finite sums:
+    `f(∑_{i ∈ s} gᵢ) = ∏_{i ∈ s} f(gᵢ)`. -/
+theorem multiplicative_finset_sum {ι : Type*} (f : Cube n → ℝ) (hf : IsBooleanValued f)
+    (hmul : IsMultiplicative f) (s : Finset ι) (g : ι → Cube n) :
+    f (∑ i ∈ s, g i) = ∏ i ∈ s, f (g i) := by
+  induction s using Finset.cons_induction with
+  | empty => simp [multiplicative_zero f hf hmul]
+  | cons a s has ih => rw [Finset.sum_cons, Finset.prod_cons, hmul, ih]
+
+/-- In `𝔽₂ⁿ`, every element is the sum of its support basis vectors:
+    `x = ∑_{i : x i = 1} eᵢ`. -/
+theorem cube_eq_sum_support (x : Cube n) :
+    x = ∑ i ∈ Finset.univ.filter (fun i => x i = 1), Pi.single i 1 := by
+  ext j
+  simp only [Finset.sum_apply, Pi.single_apply]
+  rcases zmod2_cases (x j) with h | h <;> simp [h]
+
+/-- Multiplicative + Boolean-valued implies linear.
+    Key idea: define `S = {i | f(eᵢ) = -1}` and show `f = χ S` by
+    decomposing `x` into a sum of basis vectors and using multiplicativity. -/
+theorem isMultiplicative_isLinear (f : Cube n → ℝ) (hf : IsBooleanValued f)
+    (hmul : IsMultiplicative f) : IsLinear f := by
+  let S := Finset.univ.filter (fun i : Fin n => f (Pi.single i 1) = -1)
+  refine ⟨S, fun x => ?_⟩
+  let supp := Finset.univ.filter (fun i : Fin n => x i = 1)
+  -- Step 1: f(x) = ∏_{i ∈ supp} f(eᵢ)
+  have hfx : f x = ∏ i ∈ supp, f (Pi.single i 1) := by
+    conv_lhs => rw [cube_eq_sum_support x]
+    exact multiplicative_finset_sum f hf hmul supp _
+  -- Step 2: χ_S(x) = ∏_{i ∈ S} χ(x i)
+  -- Step 3: Show these are equal
+  rw [hfx]; simp only [parityFun]
+  -- LHS: f(eᵢ) = -1 when i ∈ S, = 1 when i ∉ S
+  have hlhs : ∏ i ∈ supp, f (Pi.single i 1) = ∏ i ∈ supp.filter (· ∈ S), (-1 : ℝ) := by
+    rw [← Finset.prod_filter_mul_prod_filter_not supp (· ∈ S)]
+    have h1 : ∏ i ∈ supp.filter (· ∈ S), f (Pi.single i 1) =
+        ∏ i ∈ supp.filter (· ∈ S), (-1 : ℝ) :=
+      Finset.prod_congr rfl (fun i hi => by
+        simp only [Finset.mem_filter, S, Finset.mem_filter, Finset.mem_univ, true_and] at hi
+        exact hi.2)
+    have h2 : ∏ i ∈ supp.filter (· ∉ S), f (Pi.single i 1) = 1 :=
+      Finset.prod_eq_one (fun i hi => by
+        simp only [Finset.mem_filter, S, Finset.mem_filter, Finset.mem_univ, true_and] at hi
+        rcases hf (Pi.single i 1) with h | h
+        · exact h
+        · exact absurd h hi.2)
+    rw [h1, h2, mul_one]
+  -- RHS: χ(x i) = -1 when i ∈ supp (x i = 1), = 1 when i ∉ supp (x i = 0)
+  have hrhs : ∏ i ∈ S, chi (x i) = ∏ i ∈ S.filter (· ∈ supp), (-1 : ℝ) := by
+    rw [← Finset.prod_filter_mul_prod_filter_not S (· ∈ supp)]
+    have h1 : ∏ i ∈ S.filter (· ∈ supp), chi (x i) =
+        ∏ i ∈ S.filter (· ∈ supp), (-1 : ℝ) :=
+      Finset.prod_congr rfl (fun i hi => by
+        simp only [Finset.mem_filter, supp, Finset.mem_filter, Finset.mem_univ, true_and] at hi
+        rw [hi.2, chi_one])
+    have h2 : ∏ i ∈ S.filter (· ∉ supp), chi (x i) = 1 :=
+      Finset.prod_eq_one (fun i hi => by
+        simp only [Finset.mem_filter, supp, Finset.mem_filter, Finset.mem_univ, true_and] at hi
+        rcases zmod2_cases (x i) with h | h
+        · rw [h, chi_zero]
+        · exact absurd h hi.2)
+    rw [h1, h2, mul_one]
+  -- Both equal ∏ over S ∩ supp of (-1), and the filter sets are equal
+  rw [hlhs, hrhs]
+  congr 1
+  ext i; simp [Finset.mem_filter, and_comm]
+
+/-- Linear ↔ multiplicative for Boolean-valued functions. (§1.6, (1')) -/
+theorem isLinear_iff_isMultiplicative (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    IsLinear f ↔ IsMultiplicative f :=
+  ⟨isLinear_isMultiplicative f, isMultiplicative_isLinear f hf⟩
+
+/-- Linear implies triple-multiplicative. -/
+theorem isLinear_isTripleMultiplicative (f : Cube n → ℝ)
+    (hlin : IsLinear f) : IsTripleMultiplicative f := by
+  obtain ⟨S, hS⟩ := hlin
+  intro x y z; simp only [hS, parityFun_add]
+
+/-- Triple-multiplicative with `f(0) = 1` implies multiplicative (set `z = 0`). -/
+theorem isTripleMultiplicative_isMultiplicative (f : Cube n → ℝ)
+    (htrip : IsTripleMultiplicative f) (hf0 : f 0 = 1) : IsMultiplicative f := by
+  intro x y
+  have h := htrip x y 0; simp only [add_zero] at h
+  rw [hf0, mul_one] at h; exact h
+
+/-- Linear ↔ triple-multiplicative with `f(0) = 1` for Boolean-valued functions.
+    (§1.6, (2'))
+
+    Note: `IsTripleMultiplicative` alone does not imply linearity, since
+    `f(0) = -1` is consistent with `f(x+y+z) = f(x)·f(y)·f(z)` (e.g., `f = -χ S`).
+    The condition `f(0) = 1` is needed. -/
+theorem isLinear_iff_isTripleMultiplicative (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+    IsLinear f ↔ IsTripleMultiplicative f ∧ f 0 = 1 :=
+  ⟨fun hlin => ⟨isLinear_isTripleMultiplicative f hlin,
+    multiplicative_zero f hf (isLinear_isMultiplicative f hlin)⟩,
+   fun ⟨htrip, hf0⟩ =>
+    isMultiplicative_isLinear f hf (isTripleMultiplicative_isMultiplicative f htrip hf0)⟩
 
 end BooleanAnalysis.Internal

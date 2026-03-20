@@ -149,6 +149,13 @@ noncomputable def hammingDist (f g : Cube n → ℝ) : ℝ :=
 noncomputable def fourierWeight (f : Cube n → ℝ) (S : Finset (Fin n)) : ℝ :=
   𝓕 f S ^ 2
 
+/-- The spectral sample distribution of a Boolean-valued function `f`.
+    For each `S ⊆ [n]`, the spectral sample assigns probability `(𝓕 f S)²`.
+    By Parseval's theorem, these sum to `1` for Boolean-valued `f`.
+    (Definition 1.18) -/
+noncomputable def spectralSample (f : Cube n → ℝ) : Finset (Fin n) → ℝ :=
+  fun S => fourierWeight f S
+
 /-- The Fourier weight of `f` at degree `k`:
     `𝐖 f k = ∑_{|S|=k} (𝓕 f S)²`. (Definition 1.19) -/
 noncomputable def fourierWeightAtDegree (f : Cube n → ℝ) (k : ℕ) : ℝ :=
@@ -212,10 +219,20 @@ scoped infixl:70 " ⊛ " => convolution
 /-! ### §1.6 Linearity and the BLR test -/
 
 /-- A function `f : 𝔽₂ⁿ → 𝔽₂` (encoded as `Cube n → ℝ` with ±1 values)
-    is *linear* if it equals some parity function `χ S`.
-    Equivalently, `f(x+y) = f(x)·f(y)` for all `x, y`. (Definition 1.28) -/
+    is *linear* if it equals some parity function `χ S`. (Definition 1.28) -/
 def IsLinear (f : Cube n → ℝ) : Prop :=
   ∃ S : Finset (Fin n), ∀ x, f x = (χ S) x
+
+/-- A function `f : 𝔽₂ⁿ → ℝ` is *multiplicative* if `f(x+y) = f(x)·f(y)` for all
+    `x, y`. This is the characterization (1') of linearity from §1.6. -/
+def IsMultiplicative (f : Cube n → ℝ) : Prop :=
+  ∀ x y, f (x + y) = f x * f y
+
+/-- A function `f : 𝔽₂ⁿ → ℝ` satisfies the *triple product property* if
+    `f(x+y+z) = f(x)·f(y)·f(z)` for all `x, y, z`. This is the
+    characterization (2') of linearity from §1.6. -/
+def IsTripleMultiplicative (f : Cube n → ℝ) : Prop :=
+  ∀ x y z, f (x + y + z) = f x * f y * f z
 
 /-- Two Boolean-valued functions are `ε`-close if `dist(f, g) ≤ ε`.
     (Definition 1.29) -/
