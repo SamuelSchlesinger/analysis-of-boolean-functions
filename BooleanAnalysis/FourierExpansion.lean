@@ -83,11 +83,8 @@ theorem parseval (f : BooleanFunction n) :
 /-- **Parseval's Theorem** (Boolean case): For Boolean-valued `f`,
     `∑ S, (𝓕 f S) ^ 2 = 1`. -/
 theorem parseval_boolean (f : BooleanFunction n) (hf : IsBooleanValued f) :
-    ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 := by
-  rw [← parseval]; simp only [inner_def]
-  simp_rw [show ∀ x : Cube n, f x * f x = 1 from
-    fun x => by rcases hf x with h | h <;> simp [h],
-    Finset.sum_const, nsmul_eq_mul, mul_one, Finset.card_univ]; simp [ZMod.card]
+    ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 :=
+  Internal.parseval_boolean_proof f hf
 
 /-- The inner product `⟪f, f⟫` is nonneg. -/
 theorem inner_self_nonneg' (f : BooleanFunction n) : 0 ≤ ⟪f, f⟫ := by
