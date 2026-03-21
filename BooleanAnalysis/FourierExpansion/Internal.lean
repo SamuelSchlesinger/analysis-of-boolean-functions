@@ -271,7 +271,6 @@ directly from Mathlib's `OrthonormalBasis` API. -/
 theorem parityFun_orthonormal : Orthonormal ℝ (parityFun (n := n)) := by
   rw [orthonormal_iff_ite]
   intro i j
-  change @inner ℝ _ BooleanFunction.instInner (parityFun i) (parityFun j) = _
   exact parityFun_orthonormal_proof i j
 
 /-- The parity functions span `BooleanFunction n`. -/
@@ -298,19 +297,14 @@ noncomputable def parityOrthonormalBasis :
   show (OrthonormalBasis.mk parityFun_orthonormal parityFun_span) S = _
   simp [OrthonormalBasis.coe_mk]
 
-/-- **Plancherel's theorem**: `⟪f, g⟫ = ∑_S 𝓕 f S · 𝓕 g S`. -/
+/-- **Plancherel's theorem**: `⟪f, g⟫ = ∑_S 𝓕 f S · 𝓕 g S`.
+    Derived from the `OrthonormalBasis` of parity functions. -/
 theorem plancherel_proof (f g : BooleanFunction n) :
     ⟪f, g⟫ = ∑ S : Finset (Fin n), 𝓕 f S * 𝓕 g S := by
-  have hg := fourier_expansion_proof g
-  simp only [inner_def]
-  rw [Finset.mul_sum]
-  simp_rw [hg, Finset.mul_sum]
-  rw [Finset.sum_comm]
-  apply Finset.sum_congr rfl; intro S _
-  simp_rw [show ∀ x : Cube n, 1 / (2 : ℝ) ^ n * (f x * (fourierCoeff g S * (χ S) x)) =
-    fourierCoeff g S * (1 / (2 : ℝ) ^ n * (f x * (χ S) x)) from fun x => by ring]
-  rw [← Finset.mul_sum, mul_comm, ← Finset.mul_sum]
-  simp [fourierCoeff, inner_def]
+  have h := parityOrthonormalBasis.sum_inner_mul_inner f g
+  simp only [parityOrthonormalBasis_apply] at h
+  rw [h.symm]; congr 1; ext S
+  congr 1; exact real_inner_comm _ _
 
 /-! ### Helpers for §1.4 Proposition 1.15 (variance–distance bounds) -/
 

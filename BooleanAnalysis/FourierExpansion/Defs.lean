@@ -145,6 +145,7 @@ private theorem inner_self_eq_zero {f : BooleanFunction n}
   simpa [mul_self_eq_zero] using this
 
 noncomputable instance instCore : PreInnerProductSpace.Core ℝ (BooleanFunction n) where
+  toInner := instInner
   conj_inner_symm f g := by simp [inner_comm f g]
   re_inner_nonneg f := by simp [inner_self_nonneg' f]
   add_left := inner_add_left
