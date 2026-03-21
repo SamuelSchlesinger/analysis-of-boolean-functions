@@ -34,6 +34,11 @@ theorem chi_one : chi (1 : ZMod 2) = -1 := by
 theorem chi_sq (b : ZMod 2) : chi b ^ 2 = 1 := by
   fin_cases b <;> (unfold chi; split_ifs <;> norm_num)
 
+/-- `χ(b) · χ(b) = 1` (non-`pow` form, useful when `simp` doesn't see `sq`). -/
+@[simp]
+theorem chi_mul_self (b : ZMod 2) : chi b * chi b = 1 := by
+  have := chi_sq b; linarith [sq (chi b)]
+
 /-- `χ(b) = 1` or `χ(b) = -1`. -/
 theorem chi_eq_one_or_neg_one (b : ZMod 2) : chi b = 1 ∨ chi b = -1 := by
   fin_cases b

@@ -39,7 +39,6 @@ the book's conventions:
 
 import Mathlib.Algebra.BigOperators.Expect
 import Mathlib.Analysis.InnerProductSpace.Basic
-import Mathlib.Data.Real.Sqrt
 import Mathlib.Data.ZMod.Basic
 
 namespace BooleanAnalysis
@@ -64,9 +63,9 @@ def BooleanFunction (n : ℕ) := Cube n → ℝ
 
 namespace BooleanFunction
 
-instance : AddCommGroup (BooleanFunction n) := inferInstanceAs (AddCommGroup (Cube n → ℝ))
+noncomputable instance : CommRing (BooleanFunction n) := inferInstanceAs (CommRing (Cube n → ℝ))
 noncomputable instance : Module ℝ (BooleanFunction n) := inferInstanceAs (Module ℝ (Cube n → ℝ))
-instance : Mul (BooleanFunction n) := inferInstanceAs (Mul (Cube n → ℝ))
+noncomputable instance : Algebra ℝ (BooleanFunction n) := inferInstanceAs (Algebra ℝ (Cube n → ℝ))
 instance : Inhabited (BooleanFunction n) := inferInstanceAs (Inhabited (Cube n → ℝ))
 
 instance : FunLike (BooleanFunction n) (Cube n) ℝ where
@@ -83,6 +82,7 @@ theorem ext {f g : BooleanFunction n} (h : ∀ x, f x = g x) : f = g :=
 @[simp] theorem sub_apply (f g : BooleanFunction n) (x : Cube n) : (f - g) x = f x - g x := rfl
 @[simp] theorem smul_apply (r : ℝ) (f : BooleanFunction n) (x : Cube n) : (r • f) x = r * f x := rfl
 @[simp] theorem mul_apply (f g : BooleanFunction n) (x : Cube n) : (f * g) x = f x * g x := rfl
+@[simp] theorem one_apply (x : Cube n) : (1 : BooleanFunction n) x = 1 := rfl
 
 /-- Evaluate a `Finset` sum of `BooleanFunction`s pointwise. -/
 @[simp] theorem sum_apply {ι : Type*} (s : Finset ι) (g : ι → BooleanFunction n)
@@ -176,7 +176,11 @@ L² norm (§1.3, page 24). These map to Mathlib's `inner` and `norm` on
 /-- `⟪f, g⟫` — the inner product `𝔼[f·g]` on `BooleanFunction n` (Definition 1.3). -/
 scoped notation "⟪" f ", " g "⟫" => @inner ℝ _ _ f g
 
-/-- `‖f‖₂` — the L² norm `√⟪f, f⟫` on `BooleanFunction n` (§1.3, page 24). -/
+/-- `‖f‖₂` — the L² norm `√⟪f, f⟫` on `BooleanFunction n` (§1.3, page 24).
+
+    This equals Mathlib's `‖f‖` since the `InnerProductSpace` instance makes
+    `norm` the L² norm. We use the subscript to match the book's convention
+    and to distinguish from other norms that may appear in later chapters. -/
 scoped notation "‖" f "‖₂" => @norm _ _ f
 
 /-- `⟪f, g⟫ = (1/2ⁿ) · ∑_x f(x)·g(x)` — unfold the inner product to the
