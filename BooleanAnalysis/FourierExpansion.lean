@@ -222,6 +222,24 @@ theorem setDensity_isDensity (A : Finset (Cube n)) (hA : A.Nonempty) :
     IsDensity (setDensity A) :=
   Internal.setDensity_isDensity_proof A hA
 
+/-- Convert a density on `𝔽₂ⁿ` to a Mathlib `PMF`, bridging the book's real-valued
+    density convention with Mathlib's measure-theoretic probability API.
+
+    The book's density satisfies `𝔼[φ] = (1/2ⁿ) · ∑_x φ(x) = 1`, so
+    `∑_x φ(x) = 2ⁿ`. The PMF assigns mass `φ(x) / 2ⁿ` to each `x`. -/
+noncomputable def IsDensity.toPMF {φ : BooleanFunction n} (hφ : IsDensity φ) :
+    PMF (Cube n) :=
+  PMF.ofFintype (fun x => ENNReal.ofReal (φ x / 2 ^ n)) (by
+    have hsum : ∑ x : Cube n, φ x / 2 ^ n = 1 := by
+      simp_rw [div_eq_mul_inv, ← Finset.sum_mul]
+      have h := hφ.expect_one; simp only [expect_unfold] at h
+      have h2n : (0 : ℝ) < 2 ^ n := pow_pos two_pos n
+      rw [show (∑ x : Cube n, φ x) * (2 ^ n)⁻¹ = 1 / 2 ^ n * ∑ x, φ x from by ring]
+      linarith
+    rw [← ENNReal.ofReal_sum_of_nonneg (fun x _ =>
+      div_nonneg (hφ.nonneg x) (by positivity)), hsum]
+    simp)
+
 /-- **Fact 1.23**: Every Fourier coefficient of `φ_{0}` is 1; i.e.,
     `φ_{0}(y) = ∑_S (χ S) y`. -/
 theorem setDensity_singleton_zero :
