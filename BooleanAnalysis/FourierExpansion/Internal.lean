@@ -261,6 +261,43 @@ theorem fourier_uniqueness_proof (f : BooleanFunction n) (c : Finset (Fin n) →
     have := key S; simp only [expect_unfold] at this; exact this
   simp_rw [step4, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, if_true]
 
+/-! ### Orthonormal basis of parity functions
+
+The parity functions `χ S` form an orthonormal basis for `BooleanFunction n`
+under the uniform-measure inner product. Plancherel and Parseval follow
+directly from Mathlib's `OrthonormalBasis` API. -/
+
+/-- The parity functions are orthonormal under the uniform-measure inner product. -/
+theorem parityFun_orthonormal : Orthonormal ℝ (parityFun (n := n)) := by
+  rw [orthonormal_iff_ite]
+  intro i j
+  change @inner ℝ _ BooleanFunction.instInner (parityFun i) (parityFun j) = _
+  exact parityFun_orthonormal_proof i j
+
+/-- The parity functions span `BooleanFunction n`. -/
+theorem parityFun_span : ⊤ ≤ Submodule.span ℝ (Set.range (parityFun (n := n))) := by
+  intro f _
+  have hexp := fourier_expansion_proof f
+  have hf : f = ∑ S : Finset (Fin n), fourierCoeff f S • parityFun S := by
+    ext x
+    have : (∑ S : Finset (Fin n), fourierCoeff f S • parityFun S) x =
+        ∑ S : Finset (Fin n), fourierCoeff f S * (χ S) x := by
+      simp [BooleanFunction.smul_apply]
+    rw [this]; exact hexp x
+  rw [hf]
+  exact Submodule.sum_mem _ (fun S _ =>
+    Submodule.smul_mem _ _ (Submodule.subset_span ⟨S, rfl⟩))
+
+/-- The parity functions form an orthonormal basis for `BooleanFunction n`. -/
+noncomputable def parityOrthonormalBasis :
+    OrthonormalBasis (Finset (Fin n)) ℝ (BooleanFunction n) :=
+  OrthonormalBasis.mk parityFun_orthonormal parityFun_span
+
+@[simp] theorem parityOrthonormalBasis_apply (S : Finset (Fin n)) :
+    parityOrthonormalBasis S = parityFun S := by
+  show (OrthonormalBasis.mk parityFun_orthonormal parityFun_span) S = _
+  simp [OrthonormalBasis.coe_mk]
+
 /-- **Plancherel's theorem**: `⟪f, g⟫ = ∑_S 𝓕 f S · 𝓕 g S`. -/
 theorem plancherel_proof (f g : BooleanFunction n) :
     ⟪f, g⟫ = ∑ S : Finset (Fin n), 𝓕 f S * 𝓕 g S := by
@@ -747,51 +784,5 @@ theorem fourierCoeff_setDensity_proof (A : Finset (Cube n)) (hA : A.Nonempty)
   rw [← Finset.mul_sum, Finset.sum_ite, Finset.sum_const_zero, add_zero,
     Finset.filter_mem_eq_inter, Finset.univ_inter]
   field_simp
-
-/-! ### Orthonormal basis of parity functions
-
-The parity functions `χ S` form an orthonormal basis for `BooleanFunction n`
-under the uniform-measure inner product. This gives Parseval, Plancherel,
-and Fourier expansion for free from Mathlib's `OrthonormalBasis`. -/
-
-/-- The parity functions are orthonormal under the uniform-measure inner product. -/
-theorem parityFun_orthonormal : Orthonormal ℝ (parityFun (n := n)) := by
-  rw [orthonormal_iff_ite]
-  intro i j
-  -- The inner product from InnerProductSpace agrees with our instInner
-  change @inner ℝ _ BooleanFunction.instInner (parityFun i) (parityFun j) = _
-  exact parityFun_orthonormal_proof i j
-
-/-- The parity functions span `BooleanFunction n`. -/
-theorem parityFun_span : ⊤ ≤ Submodule.span ℝ (Set.range (parityFun (n := n))) := by
-  intro f _
-  -- f = ∑_S f̂(S) · χ_S by the Fourier expansion
-  have hexp : ∀ x, f x = ∑ S : Finset (Fin n), fourierCoeff f S * (χ S) x :=
-    fourier_expansion_proof f
-  -- Show f = ∑_S f̂(S) • parityFun S
-  have hf : f = ∑ S : Finset (Fin n), fourierCoeff f S • parityFun S := by
-    ext x
-    have : (∑ S : Finset (Fin n), fourierCoeff f S • parityFun S) x =
-        ∑ S : Finset (Fin n), fourierCoeff f S * (χ S) x := by
-      simp [BooleanFunction.smul_apply]
-    rw [this]; exact hexp x
-  rw [hf]
-  exact Submodule.sum_mem _ (fun S _ =>
-    Submodule.smul_mem _ _ (Submodule.subset_span ⟨S, rfl⟩))
-
-/-- The parity functions form an orthonormal basis for `BooleanFunction n`.
-
-    This is infrastructure for later chapters: it gives Parseval, Plancherel, and
-    Fourier expansion for free from Mathlib's `OrthonormalBasis` API. Chapter 1's
-    main theorems use hand proofs for pedagogical reasons, but later chapters will
-    route through this basis. -/
-noncomputable def parityOrthonormalBasis :
-    OrthonormalBasis (Finset (Fin n)) ℝ (BooleanFunction n) :=
-  OrthonormalBasis.mk parityFun_orthonormal parityFun_span
-
-@[simp] theorem parityOrthonormalBasis_apply (S : Finset (Fin n)) :
-    parityOrthonormalBasis S = parityFun S := by
-  show (OrthonormalBasis.mk parityFun_orthonormal parityFun_span) S = _
-  simp [OrthonormalBasis.coe_mk]
 
 end BooleanAnalysis.Internal
