@@ -11,17 +11,13 @@ direct use by downstream code.
 -/
 
 import BooleanAnalysis.FourierExpansion.Defs
+import Mathlib.Analysis.InnerProductSpace.PiL2
 
 namespace BooleanAnalysis.Internal
 
 open Finset BigOperators BooleanAnalysis
 
 variable {n : ℕ}
-
-/-- Bridge lemma: unfold `𝔼[f]` to the explicit sum form `1/2^n · ∑_x f(x)`. -/
-theorem expect_unfold (f : Cube n → ℝ) :
-    𝔼[f] = 1 / 2 ^ n * ∑ x : Cube n, f x := by
-  simp [expect, Finset.expect_eq_sum_div_card, Finset.card_univ, ZMod.card]; ring
 
 /-- `χ(0) = 1`. -/
 @[simp]
@@ -34,6 +30,7 @@ theorem chi_one : chi (1 : ZMod 2) = -1 := by
   unfold chi; norm_num
 
 /-- `χ(b)² = 1` for all `b : ZMod 2`. -/
+@[simp]
 theorem chi_sq (b : ZMod 2) : chi b ^ 2 = 1 := by
   fin_cases b <;> (unfold chi; split_ifs <;> norm_num)
 
@@ -52,6 +49,7 @@ private theorem zmod2_cases (a : ZMod 2) : a = 0 ∨ a = 1 := by
   · right; exact Fin.ext h
 
 /-- `χ` is multiplicative: `χ(a + b) = χ(a) · χ(b)`. -/
+@[simp]
 theorem chi_add (a b : ZMod 2) : chi (a + b) = chi a * chi b := by
   rcases zmod2_cases a with rfl | rfl <;> rcases zmod2_cases b with rfl | rfl <;>
     simp [chi, show (1 : ZMod 2) + 1 = 0 from Fin.ext (by decide)]
@@ -67,6 +65,7 @@ theorem parityFun_empty : (χ (∅ : Finset (Fin n))) = fun _ => 1 := by
 
 /-- Parity functions are multiplicative: `χ S (x + y) = χ S x · χ S y`.
     (Equation 1.5 in the book) -/
+@[simp]
 theorem parityFun_add (S : Finset (Fin n)) (x y : Cube n) :
     (χ S) (x + y) = (χ S) x * (χ S) y := by
   simp only [parityFun]
@@ -74,6 +73,7 @@ theorem parityFun_add (S : Finset (Fin n)) (x y : Cube n) :
   congr 1; ext i; exact chi_add (x i) (y i)
 
 /-- `(χ S x)² = 1` for all `S` and `x`. -/
+@[simp]
 theorem parityFun_sq (S : Finset (Fin n)) (x : Cube n) :
     (χ S) x ^ 2 = 1 := by
   simp only [parityFun, ← Finset.prod_pow]
@@ -109,7 +109,7 @@ theorem expect_parityFun_proof (S : Finset (Fin n)) :
 
 /-- **Definition 1.11** (explicit form): For Boolean-valued `f`,
     `𝔼[f] = Pr[f = 1] - Pr[f = -1]`. -/
-theorem expect_boolean_eq_prob_diff (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+theorem expect_boolean_eq_prob_diff (f : BooleanFunction n) (hf : IsBooleanValued f) :
     𝔼[f] = Pr[fun x => f x = 1] - Pr[fun x => f x = -1] := by
   simp only [prob, expect_unfold, indicator]
   rw [← mul_sub, ← Finset.sum_sub_distrib]
@@ -120,7 +120,7 @@ theorem expect_boolean_eq_prob_diff (f : Cube n → ℝ) (hf : IsBooleanValued f
 
 /-- For Boolean-valued `f`, `Pr[f = 1] + Pr[f = -1] = 1`.
     (Implicit in Definition 1.11: every input maps to exactly one of `1` or `-1`.) -/
-theorem prob_boolean_sum_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+theorem prob_boolean_sum_one (f : BooleanFunction n) (hf : IsBooleanValued f) :
     Pr[fun x => f x = 1] + Pr[fun x => f x = -1] = 1 := by
   simp only [prob, expect_unfold, indicator]
   rw [← mul_add, ← Finset.sum_add_distrib]
@@ -130,10 +130,10 @@ theorem prob_boolean_sum_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
   simp [Fintype.card_fin, ZMod.card]
 
 /-- Helper: `⟪f, g⟫ + 2 · dist(f, g) = 1` for Boolean-valued `f, g`. -/
-theorem innerProd_add_two_hammingDist (f g : Cube n → ℝ)
+theorem inner_add_two_hammingDist (f g : BooleanFunction n)
     (hf : IsBooleanValued f) (hg : IsBooleanValued g) :
     ⟪f, g⟫ + 2 * hammingDist f g = 1 := by
-  simp only [innerProd, hammingDist, prob, indicator, expect_unfold]
+  simp only [inner_def, hammingDist, prob, indicator, expect_unfold]
   have h2n : (0 : ℝ) < 2 ^ n := pow_pos two_pos n
   have hkey : ∀ x : Cube n, f x * g x + 2 * (@ite ℝ (f x ≠ g x) (Classical.propDecidable _) 1 0) = 1 := by
     intro x
@@ -167,8 +167,8 @@ theorem parityFun_mul (S T : Finset (Fin n)) (x : Cube n) :
     `⟪χ S, χ T⟫ = 1` if `S = T` and `0` otherwise. -/
 theorem parityFun_orthonormal_proof (S T : Finset (Fin n)) :
     ⟪χ S, χ T⟫ = if S = T then 1 else 0 := by
-  simp only [innerProd]
-  have : (fun x => (χ S) x * (χ T) x) = (χ (symmDiff S T)) := by
+  rw [inner_eq_expect]
+  have : (fun x : Cube n => (χ S) x * (χ T) x) = (χ (symmDiff S T)) := by
     ext x; exact parityFun_mul S T x
   rw [this, expect_parityFun_proof]
   have : symmDiff S T = ∅ ↔ S = T := symmDiff_eq_bot
@@ -200,9 +200,9 @@ theorem sum_parityFun (z : Cube n) :
     linarith
 
 /-- The Fourier expansion: `f(x) = ∑_S 𝓕 f S · χ_S(x)`. -/
-theorem fourier_expansion_proof (f : Cube n → ℝ) (x : Cube n) :
+theorem fourier_expansion_proof (f : BooleanFunction n) (x : Cube n) :
     f x = ∑ S : Finset (Fin n), 𝓕 f S * (χ S) x := by
-  simp only [fourierCoeff, innerProd, expect_unfold]
+  simp only [fourierCoeff, inner_def]
   have h2n : (0 : ℝ) < 2 ^ n := pow_pos two_pos n
   have hadd_zero : ∀ y : Cube n, y + x = 0 ↔ y = x := by
     intro y; constructor
@@ -229,14 +229,14 @@ theorem fourier_expansion_proof (f : Cube n → ℝ) (x : Cube n) :
 
     Proof: take `⟪–, χ T⟫` of both sides. On the right, orthonormality
     kills every term except `S = T`, leaving `c T`. On the left we get `𝓕 f T`. -/
-theorem fourier_uniqueness_proof (f : Cube n → ℝ) (c : Finset (Fin n) → ℝ)
+theorem fourier_uniqueness_proof (f : BooleanFunction n) (c : Finset (Fin n) → ℝ)
     (h : ∀ x, f x = ∑ S : Finset (Fin n), c S * (χ S) x)
     (T : Finset (Fin n)) : c T = 𝓕 f T := by
   -- Orthonormality: ⟪χ S, χ T⟫ = δ_{S,T}  (the key fact)
   have key : ∀ S, 𝔼[fun x => (χ S) x * (χ T) x] = if S = T then 1 else 0 :=
-    fun S => parityFun_orthonormal_proof S T
+    fun S => by rw [← inner_eq_expect]; exact parityFun_orthonormal_proof S T
   -- Unfold 𝓕 f T = ⟪f, χ T⟫ and substitute the expansion
-  simp only [fourierCoeff, innerProd, expect_unfold]
+  simp only [fourierCoeff, inner_def]
   have step1 : ∑ x : Cube n, f x * (χ T) x =
     ∑ x : Cube n, ∑ S : Finset (Fin n), c S * ((χ S) x * (χ T) x) := by
     apply Finset.sum_congr rfl; intro x _; rw [h x, Finset.sum_mul]
@@ -257,10 +257,10 @@ theorem fourier_uniqueness_proof (f : Cube n → ℝ) (c : Finset (Fin n) → �
   simp_rw [step4, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, if_true]
 
 /-- **Plancherel's theorem**: `⟪f, g⟫ = ∑_S 𝓕 f S · 𝓕 g S`. -/
-theorem plancherel_proof (f g : Cube n → ℝ) :
+theorem plancherel_proof (f g : BooleanFunction n) :
     ⟪f, g⟫ = ∑ S : Finset (Fin n), 𝓕 f S * 𝓕 g S := by
   have hg := fourier_expansion_proof g
-  simp only [innerProd, expect_unfold]
+  simp only [inner_def]
   rw [Finset.mul_sum]
   simp_rw [hg, Finset.mul_sum]
   rw [Finset.sum_comm]
@@ -268,19 +268,19 @@ theorem plancherel_proof (f g : Cube n → ℝ) :
   simp_rw [show ∀ x : Cube n, 1 / (2 : ℝ) ^ n * (f x * (fourierCoeff g S * (χ S) x)) =
     fourierCoeff g S * (1 / (2 : ℝ) ^ n * (f x * (χ S) x)) from fun x => by ring]
   rw [← Finset.mul_sum, mul_comm, ← Finset.mul_sum]
-  simp [fourierCoeff, innerProd, expect_unfold]
+  simp [fourierCoeff, inner_def]
 
 /-! ### Helpers for §1.4 Proposition 1.15 (variance–distance bounds) -/
 
 /-- `dist(f, 1) = Pr[f = -1]` for Boolean-valued `f`. -/
-theorem hammingDist_const_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+theorem hammingDist_const_one (f : BooleanFunction n) (hf : IsBooleanValued f) :
     hammingDist f (fun _ => 1) = Pr[fun x => f x = -1] := by
   unfold hammingDist prob indicator; congr 1; ext x
   rcases hf x with h | h <;>
     simp [h, show (1 : ℝ) ≠ -1 by norm_num, show (-1 : ℝ) ≠ 1 by norm_num]
 
 /-- `dist(f, -1) = Pr[f = 1]` for Boolean-valued `f`. -/
-theorem hammingDist_const_neg_one (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+theorem hammingDist_const_neg_one (f : BooleanFunction n) (hf : IsBooleanValued f) :
     hammingDist f (fun _ => -1) = Pr[fun x => f x = 1] := by
   unfold hammingDist prob indicator; congr 1; ext x
   rcases hf x with h | h <;>
@@ -301,9 +301,7 @@ theorem variance_dist_bounds_arith (p q : ℝ) (hp : 0 ≤ p) (hq : 0 ≤ q) (hp
 
 /-- `z + y + y = z` in `𝔽₂ⁿ` (characteristic 2 cancellation). -/
 theorem cube_add_right_cancel (z y : Cube n) : z + y + y = z := by
-  funext i
-  simp [Pi.add_apply, add_assoc]
-  exact CharTwo.add_self_eq_zero (y i) ▸ by simp
+  ext i; simp [Pi.add_apply, add_assoc, CharTwo.add_self_eq_zero]
 
 /-- `setDensity {0}` evaluates to `2^n` at `0` and `0` elsewhere. -/
 theorem setDensity_singleton_zero_ite (y : Cube n) :
@@ -329,14 +327,14 @@ theorem setDensity_singleton_zero_proof :
 /-- Every Fourier coefficient of `setDensity {0}` is `1`. -/
 theorem fourierCoeff_setDensity_singleton_zero_proof (S : Finset (Fin n)) :
     𝓕 (setDensity ({0} : Finset (Cube n))) S = 1 := by
-  simp only [fourierCoeff, innerProd, expect_unfold]
+  simp only [fourierCoeff, inner_def]
   simp_rw [setDensity_singleton_zero_ite]
   simp_rw [ite_mul, zero_mul]
   rw [Finset.sum_ite_eq', if_pos (Finset.mem_univ _)]
   simp [parityFun_zero]
 
 /-- The convolution of two densities is again a density. -/
-theorem convolution_density_isDensity_proof (φ ψ : Cube n → ℝ)
+theorem convolution_density_isDensity_proof (φ ψ : BooleanFunction n)
     (hφ : IsDensity φ) (hψ : IsDensity ψ) :
     IsDensity (φ ⊛ ψ) := by
   constructor
@@ -362,9 +360,9 @@ theorem convolution_density_isDensity_proof (φ ψ : Cube n → ℝ)
     nlinarith
 
 /-- The convolution theorem: `𝓕 (f ⊛ g) S = (𝓕 f S) · (𝓕 g S)`. -/
-theorem fourierCoeff_convolution_proof (f g : Cube n → ℝ) (S : Finset (Fin n)) :
+theorem fourierCoeff_convolution_proof (f g : BooleanFunction n) (S : Finset (Fin n)) :
     𝓕 (f ⊛ g) S = (𝓕 f S) * (𝓕 g S) := by
-  simp only [fourierCoeff, innerProd, convolution, expect_unfold]
+  simp only [fourierCoeff, inner_def, convolution, expect_unfold]
   have hinner : ∀ y : Cube n, ∑ x : Cube n, g (x + y) * (χ S) x =
     (χ S) y * ∑ z : Cube n, g z * (χ S) z := by
     intro y
@@ -440,7 +438,7 @@ theorem parityFun_mul_cancel (S : Finset (Fin n)) (x y : Cube n) :
   rw [this, show (χ S) y * (χ S) y = (χ S) y ^ 2 from by ring, h, mul_one]
 
 /-- Local correctability of the Fourier decoding algorithm. -/
-theorem local_correctability_proof (f : Cube n → ℝ) (_hf : IsBooleanValued f)
+theorem local_correctability_proof (f : BooleanFunction n) (_hf : IsBooleanValued f)
     (S : Finset (Fin n)) (ε : ℝ) (hclose : IsClose f (χ S) ε) (x : Cube n) :
     Pr[fun y => f y * f (x + y) = (χ S) x] ≥ 1 - 2 * ε := by
   have hdist : hammingDist f (χ S) ≤ ε := hclose
@@ -458,24 +456,24 @@ theorem local_correctability_proof (f : Cube n → ℝ) (_hf : IsBooleanValued f
 /-! ### Helpers for §1.6 (BLR acceptance probability and soundness) -/
 
 /-- Parseval's theorem for Boolean-valued functions. -/
-theorem parseval_boolean_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+theorem parseval_boolean_proof (f : BooleanFunction n) (hf : IsBooleanValued f) :
     ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 := by
   have h : ⟪f, f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
     rw [plancherel_proof]; congr 1; ext S; rw [sq]
-  rw [← h]; simp only [innerProd, expect_unfold]
+  rw [← h]; simp only [inner_def]
   simp_rw [show ∀ x : Cube n, f x * f x = 1 from
     fun x => by rcases hf x with h | h <;> simp [h],
     Finset.sum_const, nsmul_eq_mul, mul_one, Finset.card_univ]; simp [ZMod.card]
 
 /-- For Boolean `f`, `(𝓕 f S)² ≤ 1`. -/
-theorem fourierCoeff_sq_le_one (f : Cube n → ℝ) (hf : IsBooleanValued f)
+theorem fourierCoeff_sq_le_one (f : BooleanFunction n) (hf : IsBooleanValued f)
     (S : Finset (Fin n)) : (𝓕 f S) ^ 2 ≤ 1 := by
   linarith [parseval_boolean_proof f hf,
     Finset.single_le_sum (fun T (_ : T ∈ Finset.univ) => sq_nonneg (𝓕 f T))
       (Finset.mem_univ S)]
 
 /-- For Boolean `f`, `(𝓕 f S)³ ≤ c · (𝓕 f S)²` when `c` dominates all Fourier coefficients. -/
-theorem cube_le_max_sq (_f : Cube n → ℝ) (_hf : IsBooleanValued f)
+theorem cube_le_max_sq (_f : BooleanFunction n) (_hf : IsBooleanValued f)
     (c : ℝ) (hmax : ∀ T, 𝓕 f T ≤ c) (S : Finset (Fin n)) :
     (𝓕 f S) ^ 3 ≤ c * (𝓕 f S) ^ 2 := by
   rw [show (𝓕 f S) ^ 3 = 𝓕 f S * (𝓕 f S) ^ 2 from by ring]
@@ -490,47 +488,47 @@ theorem parityFun_isBoolean (S : Finset (Fin n)) : IsBooleanValued (χ S) := by
   · right; linarith
 
 /-- `dist(f, χ S) = (1 - 𝓕 f S) / 2` for Boolean-valued `f`. -/
-theorem hammingDist_eq_fourier (f : Cube n → ℝ) (hf : IsBooleanValued f)
+theorem hammingDist_eq_fourier (f : BooleanFunction n) (hf : IsBooleanValued f)
     (S : Finset (Fin n)) : hammingDist f (χ S) = (1 - 𝓕 f S) / 2 := by
-  have h := innerProd_add_two_hammingDist f (χ S) hf (parityFun_isBoolean S)
+  have h := inner_add_two_hammingDist f (χ S) hf (parityFun_isBoolean S)
   show hammingDist f (χ S) = (1 - ⟪f, χ S⟫) / 2; linarith
 
 /-- For Boolean `f`, the BLR indicator equals `(1 + f(x)·f(y)·f(x+y))/2`. -/
-theorem blr_indicator_eq (f : Cube n → ℝ) (hf : IsBooleanValued f) (x y : Cube n) :
+theorem blr_indicator_eq (f : BooleanFunction n) (hf : IsBooleanValued f) (x y : Cube n) :
     (𝟙 (fun y => f x * f y = f (x + y))) y = (1 + f x * f y * f (x + y)) / 2 := by
   unfold indicator
   rcases hf x with h1 | h1 <;> rcases hf y with h2 | h2 <;> rcases hf (x + y) with h3 | h3 <;>
     simp [h1, h2, h3, show (1 : ℝ) ≠ -1 by norm_num, show (-1 : ℝ) ≠ 1 by norm_num]
 
 /-- `𝔼_x[𝔼_y[f(x)·f(y)·f(x+y)]] = ⟪f, f ⊛ f⟫`. -/
-theorem triple_expect_eq (f : Cube n → ℝ) :
+theorem triple_expect_eq (f : BooleanFunction n) :
     𝔼[fun x => 𝔼[fun y => f x * f y * f (x + y)]] = ⟪f, f ⊛ f⟫ := by
-  simp only [innerProd, convolution, expect_unfold]
+  simp only [inner_def, convolution, expect_unfold]
   congr 1; apply Finset.sum_congr rfl; intro x _
   simp_rw [show ∀ y : Cube n,
     f x * f y * f (x + y) = f x * (f y * f (x + y)) from fun y => by ring,
     ← Finset.mul_sum]; ring
 
 /-- `⟪f, f ⊛ f⟫ = ∑_S (𝓕 f S)³`. -/
-theorem innerProd_conv_eq_sum_cube (f : Cube n → ℝ) :
+theorem inner_conv_eq_sum_cube (f : BooleanFunction n) :
     ⟪f, f ⊛ f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 3 := by
   rw [plancherel_proof]; apply Finset.sum_congr rfl; intro S _
   rw [fourierCoeff_convolution_proof]; ring
 
 /-- Linearity of expectation: `𝔼[c + g] = c + 𝔼[g]`. -/
-theorem expect_add_const (c : ℝ) (g : Cube n → ℝ) :
+theorem expect_add_const (c : ℝ) (g : BooleanFunction n) :
     𝔼[fun x => c + g x] = c + 𝔼[g] := by
   simp only [expect, Finset.expect_add_distrib, Fintype.expect_const]
 
 /-- Linearity of expectation: `𝔼[c · g] = c · 𝔼[g]`. -/
-theorem expect_scale (c : ℝ) (g : Cube n → ℝ) :
+theorem expect_scale (c : ℝ) (g : BooleanFunction n) :
     𝔼[fun x => c * g x] = c * 𝔼[g] := by
   unfold expect; exact (Finset.mul_expect ..).symm
 
 /-- The BLR acceptance probability formula. -/
-theorem blrAcceptProb_eq_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+theorem blrAcceptProb_eq_proof (f : BooleanFunction n) (hf : IsBooleanValued f) :
     blrAcceptProb f = 1 / 2 + 1 / 2 * ∑ S : Finset (Fin n), (𝓕 f S) ^ 3 := by
-  rw [← innerProd_conv_eq_sum_cube, ← triple_expect_eq]
+  rw [← inner_conv_eq_sum_cube, ← triple_expect_eq]
   unfold blrAcceptProb prob₂
   suffices hstep : ∀ x : Cube n,
     𝔼[𝟙 (fun y => f x * f y = f (x + y))] =
@@ -548,7 +546,7 @@ theorem blrAcceptProb_eq_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) :
 
 /-- **BLR completeness**: If `f` is linear (i.e., `f = χ_S` for some `S`),
     then the BLR test accepts with probability 1. -/
-theorem blr_completeness_proof (f : Cube n → ℝ) (hf : IsLinear f) :
+theorem blr_completeness_proof (f : BooleanFunction n) (hf : IsLinear f) :
     blrAcceptProb f = 1 := by
   obtain ⟨S, hS⟩ := hf
   unfold blrAcceptProb prob₂
@@ -556,14 +554,14 @@ theorem blr_completeness_proof (f : Cube n → ℝ) (hf : IsLinear f) :
     intro x y; simp only [hS, parityFun_add]
   have hind : ∀ x : Cube n, 𝔼[𝟙 (fun y => f x * f y = f (x + y))] = 1 := by
     intro x
-    have : (𝟙 (fun y => f x * f y = f (x + y)) : Cube n → ℝ) = fun _ => 1 := by
+    have : (𝟙 (fun y => f x * f y = f (x + y)) : BooleanFunction n) = fun _ => 1 := by
       ext y; simp [indicator, hev x y]
     rw [this]; simp [expect_unfold, Fintype.card_fin, ZMod.card]
   simp_rw [hind]; simp [expect_unfold, Fintype.card_fin, ZMod.card]
 
 /-- BLR soundness: if the BLR test accepts with probability `≥ 1 - ε`,
     then `f` is `ε`-close to a linear function. -/
-theorem blr_soundness_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : ℝ)
+theorem blr_soundness_proof (f : BooleanFunction n) (hf : IsBooleanValued f) (ε : ℝ)
     (hε : blrAcceptProb f ≥ 1 - ε) :
     IsCloseToProperty f IsLinear ε := by
   have hblr := blrAcceptProb_eq_proof f hf
@@ -582,48 +580,26 @@ theorem blr_soundness_proof (f : Cube n → ℝ) (hf : IsBooleanValued f) (ε : 
   have hclose : hammingDist f (χ S₀) ≤ ε := by linarith
   exact ⟨χ S₀, ⟨S₀, fun _ => rfl⟩, hclose⟩
 
-/-! ### Helpers for §1.4 (L² norm connection to Parseval) -/
-
-/-- The inner product `⟪f, f⟫` is nonneg (it is an average of squares). -/
-theorem innerProd_self_nonneg (f : Cube n → ℝ) : 0 ≤ ⟪f, f⟫ := by
-  simp only [innerProd, expect_unfold]
-  apply mul_nonneg
-  · positivity
-  · apply Finset.sum_nonneg; intro x _; exact mul_self_nonneg (a := f x)
-
-/-- `‖f‖₂² = ⟪f, f⟫`: squaring the L² norm recovers the inner product. -/
-theorem l2Norm_sq_eq_innerProd (f : Cube n → ℝ) : ‖f‖₂ ^ 2 = ⟪f, f⟫ := by
-  unfold l2Norm
-  exact Real.sq_sqrt (innerProd_self_nonneg f)
-
-/-- `‖f‖₂² = ∑_S (𝓕 f S)²`: the L² norm squared equals the sum of squared
-    Fourier coefficients (Parseval via L² norm). -/
-theorem l2Norm_sq_eq_sum_fourierCoeff_sq (f : Cube n → ℝ) :
-    ‖f‖₂ ^ 2 = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
-  rw [l2Norm_sq_eq_innerProd, plancherel_proof]
-  congr 1; ext S; rw [sq]
-
 /-! ### Equivalence of linearity characterizations (§1.6) -/
 
 /-- For Boolean-valued multiplicative `f`, `f(0) = 1`. -/
-theorem multiplicative_zero (f : Cube n → ℝ) (hf : IsBooleanValued f)
+theorem multiplicative_zero (f : BooleanFunction n) (hf : IsBooleanValued f)
     (hmul : IsMultiplicative f) : f 0 = 1 := by
   have h := hmul 0 0
   simp only [add_zero] at h
-  -- f(0) = f(0)², so f(0) = 1 (since f(0) = ±1)
   rcases hf 0 with h0 | h0
   · exact h0
   · exfalso; rw [h0] at h; linarith
 
 /-- Linear implies multiplicative. -/
-theorem isLinear_isMultiplicative (f : Cube n → ℝ) (hlin : IsLinear f) :
+theorem isLinear_isMultiplicative (f : BooleanFunction n) (hlin : IsLinear f) :
     IsMultiplicative f := by
   obtain ⟨S, hS⟩ := hlin
   intro x y; rw [hS, hS, hS, parityFun_add]
 
 /-- A multiplicative function distributes over finite sums:
     `f(∑_{i ∈ s} gᵢ) = ∏_{i ∈ s} f(gᵢ)`. -/
-theorem multiplicative_finset_sum {ι : Type*} (f : Cube n → ℝ) (hf : IsBooleanValued f)
+theorem multiplicative_finset_sum {ι : Type*} (f : BooleanFunction n) (hf : IsBooleanValued f)
     (hmul : IsMultiplicative f) (s : Finset ι) (g : ι → Cube n) :
     f (∑ i ∈ s, g i) = ∏ i ∈ s, f (g i) := by
   induction s using Finset.cons_induction with
@@ -641,7 +617,7 @@ theorem cube_eq_sum_support (x : Cube n) :
 /-- Multiplicative + Boolean-valued implies linear.
     Key idea: define `S = {i | f(eᵢ) = -1}` and show `f = χ S` by
     decomposing `x` into a sum of basis vectors and using multiplicativity. -/
-theorem isMultiplicative_isLinear (f : Cube n → ℝ) (hf : IsBooleanValued f)
+theorem isMultiplicative_isLinear (f : BooleanFunction n) (hf : IsBooleanValued f)
     (hmul : IsMultiplicative f) : IsLinear f := by
   let S := Finset.univ.filter (fun i : Fin n => f (Pi.single i 1) = -1)
   refine ⟨S, fun x => ?_⟩
@@ -689,18 +665,18 @@ theorem isMultiplicative_isLinear (f : Cube n → ℝ) (hf : IsBooleanValued f)
   ext i; simp [Finset.mem_filter, and_comm]
 
 /-- Linear ↔ multiplicative for Boolean-valued functions. (§1.6, (1')) -/
-theorem isLinear_iff_isMultiplicative (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+theorem isLinear_iff_isMultiplicative (f : BooleanFunction n) (hf : IsBooleanValued f) :
     IsLinear f ↔ IsMultiplicative f :=
   ⟨isLinear_isMultiplicative f, isMultiplicative_isLinear f hf⟩
 
 /-- Linear implies triple-multiplicative. -/
-theorem isLinear_isTripleMultiplicative (f : Cube n → ℝ)
+theorem isLinear_isTripleMultiplicative (f : BooleanFunction n)
     (hlin : IsLinear f) : IsTripleMultiplicative f := by
   obtain ⟨S, hS⟩ := hlin
   intro x y z; simp only [hS, parityFun_add]
 
 /-- Triple-multiplicative with `f(0) = 1` implies multiplicative (set `z = 0`). -/
-theorem isTripleMultiplicative_isMultiplicative (f : Cube n → ℝ)
+theorem isTripleMultiplicative_isMultiplicative (f : BooleanFunction n)
     (htrip : IsTripleMultiplicative f) (hf0 : f 0 = 1) : IsMultiplicative f := by
   intro x y
   have h := htrip x y 0; simp only [add_zero] at h
@@ -712,11 +688,105 @@ theorem isTripleMultiplicative_isMultiplicative (f : Cube n → ℝ)
     Note: `IsTripleMultiplicative` alone does not imply linearity, since
     `f(0) = -1` is consistent with `f(x+y+z) = f(x)·f(y)·f(z)` (e.g., `f = -χ S`).
     The condition `f(0) = 1` is needed. -/
-theorem isLinear_iff_isTripleMultiplicative (f : Cube n → ℝ) (hf : IsBooleanValued f) :
+theorem isLinear_iff_isTripleMultiplicative (f : BooleanFunction n) (hf : IsBooleanValued f) :
     IsLinear f ↔ IsTripleMultiplicative f ∧ f 0 = 1 :=
   ⟨fun hlin => ⟨isLinear_isTripleMultiplicative f hlin,
     multiplicative_zero f hf (isLinear_isMultiplicative f hlin)⟩,
    fun ⟨htrip, hf0⟩ =>
     isMultiplicative_isLinear f hf (isTripleMultiplicative_isMultiplicative f htrip hf0)⟩
+
+/-! ### Helpers for §1.5 (set density properties) -/
+
+/-- `∑ x, 𝟙(x ∈ A) = |A|` (as reals). -/
+private theorem indicator_sum_eq_card (A : Finset (Cube n)) :
+    ∑ x : Cube n, (𝟙 (· ∈ A)) x = ↑A.card := by
+  simp only [indicator]; norm_cast; simp
+
+/-- The expectation of an indicator is positive when the set is nonempty. -/
+theorem expect_indicator_pos (A : Finset (Cube n)) (hA : A.Nonempty) :
+    0 < 𝔼[𝟙 (· ∈ A)] := by
+  simp only [expect_unfold]; rw [indicator_sum_eq_card]
+  exact mul_pos (by positivity) (Nat.cast_pos.mpr hA.card_pos)
+
+/-- For nonempty `A`, `setDensity A` is a valid probability density. -/
+theorem setDensity_isDensity_proof (A : Finset (Cube n)) (hA : A.Nonempty) :
+    IsDensity (setDensity A) := by
+  have hpos := expect_indicator_pos A hA
+  constructor
+  · intro x; unfold setDensity
+    apply mul_nonneg
+    · positivity
+    · unfold indicator; split_ifs <;> linarith
+  · show 𝔼[fun x => (1 / 𝔼[𝟙 (· ∈ A)]) * (𝟙 (· ∈ A)) x] = 1
+    rw [show (fun x => (1 / 𝔼[𝟙 (· ∈ A)]) * (𝟙 (· ∈ A)) x) =
+      (fun x => (1 / 𝔼[𝟙 (· ∈ A)]) * (fun x => (𝟙 (· ∈ A)) x) x) from rfl]
+    rw [expect_scale]
+    exact one_div_mul_cancel (ne_of_gt hpos)
+
+/-- **Fact 1.23** (general): `𝓕 φ_A S = (1/|A|) · ∑_{x ∈ A} χ_S(x)`. -/
+theorem fourierCoeff_setDensity_proof (A : Finset (Cube n)) (hA : A.Nonempty)
+    (S : Finset (Fin n)) :
+    𝓕 (setDensity A) S = (1 / A.card) * ∑ x ∈ A, (χ S) x := by
+  have hApos : (0 : ℝ) < A.card := Nat.cast_pos.mpr hA.card_pos
+  have hpos := expect_indicator_pos A hA
+  simp only [fourierCoeff, inner_def, setDensity]
+  -- Rewrite 𝔼[𝟙(· ∈ A)] using the card formula
+  have hexpect : 𝔼[𝟙 (· ∈ A)] = ↑A.card / 2 ^ n := by
+    simp only [expect_unfold]; rw [indicator_sum_eq_card]; ring
+  rw [hexpect]
+  -- Simplify the indicator product: 𝟙(x ∈ A) * χ S x = if x ∈ A then χ S x else 0
+  simp_rw [show ∀ x : Cube n,
+    1 / (↑A.card / 2 ^ n) * (𝟙 (· ∈ A)) x * (χ S) x =
+    1 / (↑A.card / 2 ^ n) * (if x ∈ A then (χ S) x else 0) from by
+    intro x; unfold indicator; split_ifs <;> ring]
+  rw [← Finset.mul_sum, Finset.sum_ite, Finset.sum_const_zero, add_zero,
+    Finset.filter_mem_eq_inter, Finset.univ_inter]
+  field_simp
+
+/-! ### Orthonormal basis of parity functions
+
+The parity functions `χ S` form an orthonormal basis for `BooleanFunction n`
+under the uniform-measure inner product. This gives Parseval, Plancherel,
+and Fourier expansion for free from Mathlib's `OrthonormalBasis`. -/
+
+/-- The parity functions are orthonormal under the uniform-measure inner product. -/
+theorem parityFun_orthonormal : Orthonormal ℝ (parityFun (n := n)) := by
+  rw [orthonormal_iff_ite]
+  intro i j
+  -- The inner product from InnerProductSpace agrees with our instInner
+  change @inner ℝ _ BooleanFunction.instInner (parityFun i) (parityFun j) = _
+  exact parityFun_orthonormal_proof i j
+
+/-- The parity functions span `BooleanFunction n`. -/
+theorem parityFun_span : ⊤ ≤ Submodule.span ℝ (Set.range (parityFun (n := n))) := by
+  intro f _
+  -- f = ∑_S f̂(S) · χ_S by the Fourier expansion
+  have hexp : ∀ x, f x = ∑ S : Finset (Fin n), fourierCoeff f S * (χ S) x :=
+    fourier_expansion_proof f
+  -- Show f = ∑_S f̂(S) • parityFun S
+  have hf : f = ∑ S : Finset (Fin n), fourierCoeff f S • parityFun S := by
+    ext x
+    have : (∑ S : Finset (Fin n), fourierCoeff f S • parityFun S) x =
+        ∑ S : Finset (Fin n), fourierCoeff f S * (χ S) x := by
+      simp [BooleanFunction.smul_apply]
+    rw [this]; exact hexp x
+  rw [hf]
+  exact Submodule.sum_mem _ (fun S _ =>
+    Submodule.smul_mem _ _ (Submodule.subset_span ⟨S, rfl⟩))
+
+/-- The parity functions form an orthonormal basis for `BooleanFunction n`.
+
+    This is infrastructure for later chapters: it gives Parseval, Plancherel, and
+    Fourier expansion for free from Mathlib's `OrthonormalBasis` API. Chapter 1's
+    main theorems use hand proofs for pedagogical reasons, but later chapters will
+    route through this basis. -/
+noncomputable def parityOrthonormalBasis :
+    OrthonormalBasis (Finset (Fin n)) ℝ (BooleanFunction n) :=
+  OrthonormalBasis.mk parityFun_orthonormal parityFun_span
+
+@[simp] theorem parityOrthonormalBasis_apply (S : Finset (Fin n)) :
+    parityOrthonormalBasis S = parityFun S := by
+  show (OrthonormalBasis.mk parityFun_orthonormal parityFun_span) S = _
+  simp [OrthonormalBasis.coe_mk]
 
 end BooleanAnalysis.Internal
