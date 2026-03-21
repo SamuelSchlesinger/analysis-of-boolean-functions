@@ -46,6 +46,46 @@ variable {n : ℕ}
 /-- The Hamming cube `𝔽₂ⁿ` is `Fin n → ZMod 2`. -/
 abbrev Cube (n : ℕ) := Fin n → ZMod 2
 
+/-- `L2Cube n` is the space of functions `𝔽₂ⁿ → ℝ` equipped with the
+    uniform-measure L² inner product. The `def` (rather than `abbrev`) blocks
+    typeclass resolution from seeing through to `Cube n → ℝ`, avoiding a
+    norm diamond with Mathlib's Pi-type sup norm.
+
+    Named after the L² space on the Boolean cube from O'Donnell's
+    *Analysis of Boolean Functions* (§1.3). -/
+def L2Cube (n : ℕ) := Cube n → ℝ
+
+namespace L2Cube
+
+instance : AddCommGroup (L2Cube n) := inferInstanceAs (AddCommGroup (Cube n → ℝ))
+noncomputable instance : Module ℝ (L2Cube n) := inferInstanceAs (Module ℝ (Cube n → ℝ))
+instance : Inhabited (L2Cube n) := inferInstanceAs (Inhabited (Cube n → ℝ))
+
+instance : FunLike (L2Cube n) (Cube n) ℝ where
+  coe f := f
+  coe_injective' f g h := show (f : Cube n → ℝ) = g from h
+
+@[ext]
+theorem ext {f g : L2Cube n} (h : ∀ x, f x = g x) : f = g :=
+  DFunLike.ext f g h
+
+@[simp] theorem zero_apply (x : Cube n) : (0 : L2Cube n) x = 0 := rfl
+@[simp] theorem add_apply (f g : L2Cube n) (x : Cube n) : (f + g) x = f x + g x := rfl
+@[simp] theorem neg_apply (f : L2Cube n) (x : Cube n) : (-f) x = -(f x) := rfl
+@[simp] theorem sub_apply (f g : L2Cube n) (x : Cube n) : (f - g) x = f x - g x := rfl
+@[simp] theorem smul_apply (r : ℝ) (f : L2Cube n) (x : Cube n) : (r • f) x = r * f x := rfl
+
+/-- Coerce a function to `L2Cube`. -/
+def ofFun (f : Cube n → ℝ) : L2Cube n := f
+
+/-- Extract the underlying function. -/
+def toFun (f : L2Cube n) : Cube n → ℝ := f
+
+@[simp] theorem toFun_ofFun (f : Cube n → ℝ) : toFun (ofFun f) = f := rfl
+@[simp] theorem ofFun_toFun (f : L2Cube n) : ofFun (toFun f) = f := rfl
+
+end L2Cube
+
 /-- A function `f : 𝔽₂ⁿ → ℝ` is Boolean-valued if its range is `{-1, 1}`.
     In the ±1 encoding, this means `f(x) = ±1` for all `x`. -/
 def IsBooleanValued (f : Cube n → ℝ) : Prop :=

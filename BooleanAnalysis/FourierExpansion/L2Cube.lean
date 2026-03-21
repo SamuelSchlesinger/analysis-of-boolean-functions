@@ -30,43 +30,7 @@ open Finset BigOperators
 
 variable {n : ℕ}
 
-/-- `L2Cube n` is the space of functions `𝔽₂ⁿ → ℝ` equipped with the
-    uniform-measure inner product `⟪f, g⟫ = 𝔼[f·g]`.
-
-    Named after the L² space on the Boolean cube that appears throughout
-    O'Donnell's *Analysis of Boolean Functions*. -/
-def L2Cube (n : ℕ) := Cube n → ℝ
-
 namespace L2Cube
-
-/-! ### Transfer algebraic instances from `Cube n → ℝ`
-
-Following Mathlib's `WithLp` pattern, we use `inferInstanceAs` to transfer
-instances through the definitional equality `L2Cube n = (Cube n → ℝ)`. -/
-
-instance : AddCommGroup (L2Cube n) := inferInstanceAs (AddCommGroup (Cube n → ℝ))
-noncomputable instance : Module ℝ (L2Cube n) := inferInstanceAs (Module ℝ (Cube n → ℝ))
-instance : Inhabited (L2Cube n) := inferInstanceAs (Inhabited (Cube n → ℝ))
-
-instance : FunLike (L2Cube n) (Cube n) ℝ where
-  coe f := f
-  coe_injective' f g h := show (f : Cube n → ℝ) = g from h
-
-@[ext]
-theorem ext {f g : L2Cube n} (h : ∀ x, f x = g x) : f = g :=
-  DFunLike.ext f g h
-
-@[simp] theorem zero_apply (x : Cube n) : (0 : L2Cube n) x = 0 := rfl
-@[simp] theorem add_apply (f g : L2Cube n) (x : Cube n) : (f + g) x = f x + g x := rfl
-@[simp] theorem neg_apply (f : L2Cube n) (x : Cube n) : (-f) x = -(f x) := rfl
-@[simp] theorem sub_apply (f g : L2Cube n) (x : Cube n) : (f - g) x = f x - g x := rfl
-@[simp] theorem smul_apply (r : ℝ) (f : L2Cube n) (x : Cube n) : (r • f) x = r * f x := rfl
-
-/-- Coerce a function to `L2Cube`. -/
-def ofFun (f : Cube n → ℝ) : L2Cube n := f
-
-/-- Extract the underlying function. -/
-def toFun (f : L2Cube n) : Cube n → ℝ := f
 
 /-! ### Inner product -/
 
@@ -85,6 +49,11 @@ theorem inner_eq_innerProd (f g : L2Cube n) :
   have : Finset.card Finset.univ = Fintype.card (Cube n) := Finset.card_univ
   rw [this, show (Fintype.card (Cube n) : ℝ) = 2 ^ n from by simp [ZMod.card]]
   field_simp
+
+/-- Bridge: `innerProd f g = inner (ofFun f) (ofFun g)` on `L2Cube`. -/
+theorem innerProd_eq_inner (f g : Cube n → ℝ) :
+    innerProd f g = @inner ℝ _ instInner (ofFun f) (ofFun g) :=
+  (inner_eq_innerProd (ofFun f) (ofFun g)).symm
 
 /-! ### InnerProductSpace instance -/
 
@@ -146,6 +115,12 @@ noncomputable def parityBasis (S : Finset (Fin n)) : L2Cube n :=
 
 theorem parityBasis_apply (S : Finset (Fin n)) (x : Cube n) :
     parityBasis S x = (χ S) x := rfl
+
+/-- Bridge: `fourierCoeff f S = inner (parityBasis S) (ofFun f)`. -/
+theorem fourierCoeff_eq_inner (f : Cube n → ℝ) (S : Finset (Fin n)) :
+    fourierCoeff f S = @inner ℝ _ instInner (parityBasis S) (ofFun f) := by
+  simp only [fourierCoeff, innerProd_eq_inner, inner_def, parityBasis, ofFun]
+  congr 1; apply Finset.sum_congr rfl; intro x _; ring
 
 /-- The parity functions are orthonormal under the uniform-measure inner product. -/
 theorem parityBasis_orthonormal : Orthonormal ℝ (parityBasis (n := n)) := by
