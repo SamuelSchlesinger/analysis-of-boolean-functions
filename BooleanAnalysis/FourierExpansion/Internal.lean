@@ -491,12 +491,15 @@ theorem local_correctability_proof (f : BooleanFunction n) (_hf : IsBooleanValue
 
 /-! ### Helpers for §1.6 (BLR acceptance probability and soundness) -/
 
+/-- **Parseval's theorem**: `⟪f, f⟫ = ∑_S (𝓕 f S)²`. -/
+theorem parseval_proof (f : BooleanFunction n) :
+    ⟪f, f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
+  rw [plancherel_proof]; congr 1; ext S; rw [sq]
+
 /-- Parseval's theorem for Boolean-valued functions. -/
 theorem parseval_boolean_proof (f : BooleanFunction n) (hf : IsBooleanValued f) :
     ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 = 1 := by
-  have h : ⟪f, f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
-    rw [plancherel_proof]; congr 1; ext S; rw [sq]
-  rw [← h]; simp only [inner_def]
+  rw [← parseval_proof]; simp only [inner_def]
   simp_rw [show ∀ x : Cube n, f x * f x = 1 from
     fun x => by rcases hf x with h | h <;> simp [h],
     Finset.sum_const, nsmul_eq_mul, mul_one, Finset.card_univ]; simp [ZMod.card]

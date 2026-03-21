@@ -77,8 +77,8 @@ theorem fourierCoeff_eq_inner (f : BooleanFunction n) (S : Finset (Fin n)) :
 
 /-- **Parseval's Theorem**: `⟪f, f⟫ = ∑ S, (𝓕 f S) ^ 2`. -/
 theorem parseval (f : BooleanFunction n) :
-    ⟪f, f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 := by
-  rw [Internal.plancherel_proof]; congr 1; ext S; rw [sq]
+    ⟪f, f⟫ = ∑ S : Finset (Fin n), (𝓕 f S) ^ 2 :=
+  Internal.parseval_proof f
 
 /-- **Parseval's Theorem** (Boolean case): For Boolean-valued `f`,
     `∑ S, (𝓕 f S) ^ 2 = 1`. -/
