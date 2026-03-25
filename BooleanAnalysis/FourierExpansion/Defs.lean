@@ -361,13 +361,16 @@ def IsLinear (f : BooleanFunction n) : Prop :=
   ∃ S : Finset (Fin n), ∀ x, f x = (χ S) x
 
 /-- A function `f : 𝔽₂ⁿ → ℝ` is *multiplicative* if `f(x+y) = f(x)·f(y)` for all
-    `x, y`. This is the characterization (1') of linearity from §1.6. -/
+    `x, y`. This is property (2) from §1.6. For Boolean-valued functions,
+    `isLinear_iff_isMultiplicative` proves the equivalence (1'):
+    `IsLinear f ↔ IsMultiplicative f`. -/
 def IsMultiplicative (f : BooleanFunction n) : Prop :=
   ∀ x y, f (x + y) = f x * f y
 
 /-- A function `f : 𝔽₂ⁿ → ℝ` satisfies the *triple product property* if
-    `f(x+y+z) = f(x)·f(y)·f(z)` for all `x, y, z`. This is the
-    characterization (2') of linearity from §1.6. -/
+    `f(x+y+z) = f(x)·f(y)·f(z)` for all `x, y, z`. This is the property
+    appearing in equivalence (2') from §1.6: for Boolean-valued `f`,
+    `IsLinear f ↔ IsTripleMultiplicative f ∧ f 0 = 1`. -/
 def IsTripleMultiplicative (f : BooleanFunction n) : Prop :=
   ∀ x y z, f (x + y + z) = f x * f y * f z
 

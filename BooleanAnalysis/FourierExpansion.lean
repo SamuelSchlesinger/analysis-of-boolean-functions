@@ -202,6 +202,18 @@ theorem covariance_eq_sum_fourierCoeff (f g : BooleanFunction n) :
   congr 1
   ext S; simp [Finset.mem_erase, Finset.mem_filter, and_comm]
 
+/-! ### §1.4 Spectral sample distribution -/
+
+/-- **Definition 1.18** (Spectral sample): For Boolean-valued `f`, the squared
+    Fourier coefficients `(𝓕 f S)²` form a probability distribution on `2^[n]`,
+    represented as a `PMF`. By Parseval's theorem, `∑_S (𝓕 f S)² = 1`. -/
+noncomputable def spectralSample (f : BooleanFunction n) (hf : IsBooleanValued f) :
+    PMF (Finset (Fin n)) :=
+  PMF.ofFintype (fun S => ENNReal.ofReal (fourierWeight f S)) (by
+    simp only [fourierWeight,
+      ← ENNReal.ofReal_sum_of_nonneg (fun S _ => sq_nonneg (𝓕 f S))]
+    rw [parseval_boolean f hf]; simp)
+
 /-! ### §1.5 Probability densities and convolution -/
 
 /-- **Fact 1.21**: `𝔼[f·g] = ⟪f, g⟫` for all `f, g`.
@@ -325,17 +337,5 @@ theorem local_correctability (f : BooleanFunction n) (hf : IsBooleanValued f)
     (S : Finset (Fin n)) (hclose : IsClose f (χ S) ε) (x : Cube n) :
     Pr[fun y => f y * f (x + y) = (χ S) x] ≥ 1 - 2 * ε :=
   Internal.local_correctability_proof f hf S ε hclose x
-
-/-! ### §1.4 Spectral sample distribution -/
-
-/-- **Definition 1.18** (Spectral sample): For Boolean-valued `f`, the squared
-    Fourier coefficients `(𝓕 f S)²` form a probability distribution on `2^[n]`,
-    represented as a `PMF`. By Parseval's theorem, `∑_S (𝓕 f S)² = 1`. -/
-noncomputable def spectralSample (f : BooleanFunction n) (hf : IsBooleanValued f) :
-    PMF (Finset (Fin n)) :=
-  PMF.ofFintype (fun S => ENNReal.ofReal (fourierWeight f S)) (by
-    simp only [fourierWeight,
-      ← ENNReal.ofReal_sum_of_nonneg (fun S _ => sq_nonneg (𝓕 f S))]
-    rw [parseval_boolean f hf]; simp)
 
 end BooleanAnalysis
