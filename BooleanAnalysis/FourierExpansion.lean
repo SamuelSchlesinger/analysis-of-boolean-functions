@@ -292,21 +292,12 @@ theorem fourierCoeff_convolution (f g : BooleanFunction n) (S : Finset (Fin n)) 
 
 /-! ### §1.6 Linearity characterizations -/
 
-/-- **(1')** For Boolean-valued `f`, linearity is equivalent to multiplicativity:
+/-- **Definition 1.28** (equivalence): For Boolean-valued `f`, linearity is
+    equivalent to multiplicativity:
     `f = χ S` for some `S` iff `f(x+y) = f(x)·f(y)` for all `x, y`. -/
 theorem isLinear_iff_isMultiplicative (f : BooleanFunction n) (hf : IsBooleanValued f) :
     IsLinear f ↔ IsMultiplicative f :=
   Internal.isLinear_iff_isMultiplicative f hf
-
-/-- **(2')** For Boolean-valued `f`, linearity is equivalent to the triple product
-    property plus `f(0) = 1`:
-    `f = χ S` iff `f(x+y+z) = f(x)·f(y)·f(z)` for all `x, y, z` and `f(0) = 1`.
-
-    The condition `f(0) = 1` is necessary: `-χ S` satisfies the triple product
-    property but is not linear (since `(-χ S)(0) = -1 ≠ 1 = (χ T)(0)`). -/
-theorem isLinear_iff_isTripleMultiplicative (f : BooleanFunction n) (hf : IsBooleanValued f) :
-    IsLinear f ↔ IsTripleMultiplicative f ∧ f 0 = 1 :=
-  Internal.isLinear_iff_isTripleMultiplicative f hf
 
 /-! ### §1.6 The BLR test -/
 

@@ -703,36 +703,10 @@ theorem isMultiplicative_isLinear (f : BooleanFunction n) (hf : IsBooleanValued 
   congr 1
   ext i; simp [Finset.mem_filter, and_comm]
 
-/-- Linear ↔ multiplicative for Boolean-valued functions. (§1.6, (1')) -/
+/-- **Definition 1.28** (equivalence): Linear ↔ multiplicative for Boolean-valued functions. -/
 theorem isLinear_iff_isMultiplicative (f : BooleanFunction n) (hf : IsBooleanValued f) :
     IsLinear f ↔ IsMultiplicative f :=
   ⟨isLinear_isMultiplicative f, isMultiplicative_isLinear f hf⟩
-
-/-- Linear implies triple-multiplicative. -/
-theorem isLinear_isTripleMultiplicative (f : BooleanFunction n)
-    (hlin : IsLinear f) : IsTripleMultiplicative f := by
-  obtain ⟨S, hS⟩ := hlin
-  intro x y z; simp only [hS, parityFun_add]
-
-/-- Triple-multiplicative with `f(0) = 1` implies multiplicative (set `z = 0`). -/
-theorem isTripleMultiplicative_isMultiplicative (f : BooleanFunction n)
-    (htrip : IsTripleMultiplicative f) (hf0 : f 0 = 1) : IsMultiplicative f := by
-  intro x y
-  have h := htrip x y 0; simp only [add_zero] at h
-  rw [hf0, mul_one] at h; exact h
-
-/-- Linear ↔ triple-multiplicative with `f(0) = 1` for Boolean-valued functions.
-    (§1.6, (2'))
-
-    Note: `IsTripleMultiplicative` alone does not imply linearity, since
-    `f(0) = -1` is consistent with `f(x+y+z) = f(x)·f(y)·f(z)` (e.g., `f = -χ S`).
-    The condition `f(0) = 1` is needed. -/
-theorem isLinear_iff_isTripleMultiplicative (f : BooleanFunction n) (hf : IsBooleanValued f) :
-    IsLinear f ↔ IsTripleMultiplicative f ∧ f 0 = 1 :=
-  ⟨fun hlin => ⟨isLinear_isTripleMultiplicative f hlin,
-    multiplicative_zero f hf (isLinear_isMultiplicative f hlin)⟩,
-   fun ⟨htrip, hf0⟩ =>
-    isMultiplicative_isLinear f hf (isTripleMultiplicative_isMultiplicative f htrip hf0)⟩
 
 /-! ### Helpers for §1.5 (set density properties) -/
 
