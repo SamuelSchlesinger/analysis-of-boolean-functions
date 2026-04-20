@@ -313,6 +313,14 @@ noncomputable def lowDegreePart (f : BooleanFunction n) (k : ℕ) : BooleanFunct
   fun x => ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin n) => S.card ≤ k),
     𝓕 f S * (χ S) x
 
+/-- The Fourier weight of `f` at degrees up to `k`:
+    `𝐖^{≤k}[f] = ∑_{|S|≤k} (𝓕 f S)²`. -/
+noncomputable def fourierWeightUpToDegree (f : BooleanFunction n) (k : ℕ) : ℝ :=
+  ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin n) => S.card ≤ k),
+    fourierWeight f S
+
+scoped notation "𝐖_≤" => fourierWeightUpToDegree
+
 /-- The Fourier weight of `f` at degrees above `k`:
     `𝐖^{>k}[f] = ∑_{|S|>k} (𝓕 f S)²`. (Definition 1.19) -/
 noncomputable def fourierWeightAbove (f : BooleanFunction n) (k : ℕ) : ℝ :=

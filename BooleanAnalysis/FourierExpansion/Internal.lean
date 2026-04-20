@@ -756,4 +756,57 @@ theorem fourierCoeff_setDensity_proof (A : Finset (Cube n)) (hA : A.Nonempty)
     Finset.filter_mem_eq_inter, Finset.univ_inter]
   field_simp
 
+/-! ### Helpers for Fourier weights at specific degrees -/
+
+/-- `W^{≤k}[f]` is the sum of `W^i[f]` for `i ≤ k`. -/
+theorem fourierWeightUpToDegree_eq_sum (f : BooleanFunction n) (k : ℕ) :
+    𝐖_≤ f k = ∑ i ∈ Finset.range (k + 1), 𝐖 f i := by
+  simp only [fourierWeightUpToDegree, fourierWeightAtDegree]
+  have h_eq : Finset.univ.filter (fun S : Finset (Fin n) => S.card ≤ k) =
+      Finset.biUnion (Finset.range (k + 1)) (fun i => Finset.univ.filter (fun S => S.card = i)) := by
+    ext S
+    simp only [Finset.mem_filter, Finset.mem_biUnion, Finset.mem_range, Finset.mem_univ, true_and]
+    constructor
+    · intro hcard
+      use S.card
+      constructor
+      · omega
+      · rfl
+    · rintro ⟨i, hi, heq⟩
+      omega
+  rw [h_eq]
+  rw [Finset.sum_biUnion]
+  intro i _ j _ hij
+  simp only [Function.onFun]
+  rw [Finset.disjoint_left]
+  intro S hSi hSj
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hSi hSj
+  omega
+
+/-
+`W^{≤1}[f] = 𝓕 f ∅ ^ 2 + ∑ i, 𝓕 f {i} ^ 2`.
+    This is the exact expression used in the Majority Is Least Stable (Degree-1) conjecture.
+-/
+theorem fourierWeightUpToDegree_one_eq (f : BooleanFunction n) :
+    𝐖_≤ f 1 = fourierWeight f ∅ + ∑ i : Fin n, fourierWeight f {i} := by
+  rw [fourierWeightUpToDegree_eq_sum f 1]
+  rw [Finset.sum_range_succ, Finset.sum_range_succ, Finset.sum_range_zero, zero_add]
+  congr 1
+  · -- Degree 0 term
+    unfold fourierWeightAtDegree
+    have h_zero : Finset.univ.filter (fun S : Finset (Fin n) => S.card = 0) = {∅} := by
+      ext S
+      simp only [Finset.mem_filter, Finset.mem_singleton, Finset.mem_univ, true_and]
+      exact Finset.card_eq_zero
+    rw [h_zero, Finset.sum_singleton]
+  · -- Degree 1 term
+    unfold fourierWeightAtDegree
+    have h_one : Finset.univ.filter (fun S : Finset (Fin n) => S.card = 1) =
+        Finset.univ.image (fun i => {i}) := by
+      ext; simp [Finset.card_eq_one]; tauto
+    rw [h_one]
+    rw [Finset.sum_image]
+    intro i _ j _ hij
+    exact Finset.singleton_inj.mp hij
+
 end BooleanAnalysis.Internal
